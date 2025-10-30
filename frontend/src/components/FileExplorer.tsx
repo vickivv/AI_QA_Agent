@@ -62,9 +62,8 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           </>
         ) : (
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-sm ${
-              selectedFile === item.name ? "bg-blue-50 border-l-2 border-blue-500" : ""
-            }`}
+            className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-sm ${selectedFile === item.name ? "bg-blue-50 border-l-2 border-blue-500" : ""
+              }`}
             style={{ paddingLeft: `${depth * 12 + 12}px` }}
             onClick={() => onSelectFile(item.name)}
           >

@@ -32,7 +32,6 @@ const findMatches = (items: FileItem[], q: string): string[] => {
   walk(items);
   return hits;
 };
-
 const expandAncestors = (paths: string[], prev: Record<string, boolean>) => {
   const next = { ...prev };
   for (const p of paths) {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Search } from "lucide-react";
-import { useAppDispatch } from "../store/hooks";
+import { useAppDispatch } from "../store/hook";
 import { searchAndExpand } from "../store/explorerSlice";
 import type { FileItem } from "../store/explorerSlice";
 

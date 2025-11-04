@@ -1,10 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { FolderItem, TreeItem } from '../components/RenderTrees';
 
-export interface FileItem {
-  name: string;
-  type: "file" | "folder";
-  children?: FileItem[];
-}
+
 
 type State = {
   expandedByPath: Record<string, boolean>;
@@ -18,15 +15,17 @@ const initialState: State = {
 
 const join = (base: string, name: string) => (base ? `${base}/${name}` : name);
 
-const findMatches = (items: FileItem[], q: string): string[] => {
+const findMatches = (items: TreeItem[], q: string): string[] => {
   const hits: string[] = [];
   const needle = q.trim().toLowerCase();
   if (!needle) return hits;
-  const walk = (nodes: FileItem[], base = "") => {
+  const walk = (nodes: TreeItem[], base = "") => {
     for (const n of nodes) {
       const path = join(base, n.name);
       if (n.name.toLowerCase().includes(needle)) hits.push(path);
-      if (n.type === "folder" && n.children) walk(n.children, path);
+      if (n.type === "folder" && (n as FolderItem).children) {
+                walk((n as FolderItem).children!, path);
+            }
     }
   };
   walk(items);
@@ -47,7 +46,7 @@ const expandAncestors = (paths: string[], prev: Record<string, boolean>) => {
 // Thunk: performs search using current files tree passed in
 export const searchAndExpand = createAsyncThunk<
   { hits: string[]; expandedByPath: Record<string, boolean> },
-  { files: FileItem[]; query: string },
+  { files: TreeItem[]; query: string },
   { state: { explorer: State } }
 >("explorer/searchAndExpand", async ({ files, query }, { getState }) => {
   const hits = findMatches(files, query);
@@ -62,13 +61,16 @@ const explorerSlice = createSlice({
     setExpandedByPath(state, action: PayloadAction<Record<string, boolean>>) {
       state.expandedByPath = action.payload;
     },
-    toggleFolder(state, action: PayloadAction<string>) {
-      const p = action.payload;
-      state.expandedByPath[p] = !state.expandedByPath[p];
+  
+    toggleFolder(state, action: PayloadAction<string>) {   
+      const folderPath = action.payload;
+      state.expandedByPath[folderPath] = !state.expandedByPath[folderPath];
     },
+
     setSearchHits(state, action: PayloadAction<string[]>) {
       state.searchHits = action.payload;
     },
+
     clearSearch(state) {
       state.searchHits = [];
     },

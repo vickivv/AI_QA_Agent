@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import folders from "../Database";
 import { v4 as uuidv4 } from "uuid";
+import { addFile, deleteFile } from "./fileReducer";
 
 // --- 1. INTERFACE DEFINITIONS ---
 
@@ -24,7 +24,10 @@ interface FoldersState {
 
 // The 'folders' variable imported from "../Database" must be compatible with Folder[]
 const initialState: FoldersState = {
- folders: folders as Folder[], 
+ folders: [
+    { _id: "folder1", name: "src", files: [] },
+    { _id: "folder2", name: "tests", files: [] }
+  ],
 };
 
 // --- 3. PAYLOAD INTERFACES (Action Input Types) ---
@@ -62,11 +65,14 @@ const foldersSlice = createSlice({
         // Reducer 2: Delete Folder
         deleteFolder: (state, action: PayloadAction<DeleteFolderPayload>) => {
             const { folderId } = action.payload; 
+            console.log('deleteFolder reducer called with folderId:', folderId);
+            console.log('Before delete, folders:', state.folders);
             state.folders = state.folders.filter((f) => f._id !== folderId);
+            console.log('After delete, folders:', state.folders);
         },
         
         // Reducer 3: Update Folder Name
-        updateFolderName: (state, action: PayloadAction<UpdateFolderNamePayload>) => {
+        renameFolder: (state, action: PayloadAction<UpdateFolderNamePayload>) => {
             const { folderId, newName } = action.payload;
             const folderToUpdate = state.folders.find(f => f._id === folderId);    
             if (folderToUpdate) {
@@ -76,6 +82,6 @@ const foldersSlice = createSlice({
     }
 });
 
-export const { addNewFolder, deleteFolder, updateFolderName } = foldersSlice.actions;
+export const { addNewFolder, deleteFolder, renameFolder } = foldersSlice.actions;
 
 export default foldersSlice.reducer;

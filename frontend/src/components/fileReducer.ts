@@ -12,11 +12,16 @@ interface File {
 
 interface FilesState {
   files: File[];
+  selectedId?: string;
 }
 
 // --- 2. INITIAL STATE ---
 const initialState: FilesState = {
-  files: [], 
+  files: [
+    { _id: "file1", name: "main.py", content: "", folderId: "folder1" },
+    { _id: "file3", name: "test_main.py", content: "", folderId: "folder2" }
+  ],
+  selectedId: "file1",
 };
 
 // --- 3. PAYLOAD INTERFACES ---
@@ -52,9 +57,12 @@ export const fileSlice = createSlice({
       state.files.push(newFile);
     },
 
-    deleteFile: (state, action: PayloadAction<DeleteFilePayload>) => {
+    deleteFile: (state, action: PayloadAction<DeleteFilePayload>) => {       
       const { fileId } = action.payload;
+      console.log('deleteFile reducer called with fileId:', fileId);
+      console.log('Before delete, files:', state.files);
       state.files = state.files.filter(f => f._id !== fileId);
+      console.log('After delete, files:', state.files);
     },
 
     renameFile: (state, action: PayloadAction<RenameFilePayload>) => {
@@ -64,9 +72,19 @@ export const fileSlice = createSlice({
         fileToUpdate.name = newName;
       }
     },
+    selectFile(state, { payload }: PayloadAction<string>) {
+      state.selectedId = payload;
+    },
+    updateContent(
+      state,
+      { payload }: PayloadAction<{ id: string; text: string }>
+    ) {
+      const f = state.files.find(x => x._id === payload.id);
+      if (f) f.content = payload.text;
+    }
   },
 });
 
 // --- 5. EXPORTS ---
-export const { addFile, deleteFile, renameFile } = fileSlice.actions;
+export const { addFile, deleteFile, renameFile, selectFile, updateContent } = fileSlice.actions;
 export default fileSlice.reducer;

@@ -1,3 +1,5 @@
+"use client";
+import { useDispatch, useSelector } from "react-redux";
 import React, { useState, useRef, useEffect } from "react";
 import { Files, Play, Settings, RefreshCw } from "lucide-react";
 import Editor, { OnMount } from "@monaco-editor/react";
@@ -6,6 +8,7 @@ import * as monaco from "monaco-editor";
 import FileExplorer from "./FileExplorer";
 import { FileItem, TreeItem } from "./RenderTrees"
 import TopBar from './TopBar';
+
 
 
 const AITestGenIDE: React.FC = () => {
@@ -109,7 +112,6 @@ sys.stderr = sys.stdout
       <div className="flex-1 flex overflow-hidden">
         {/* --- File Explorer sidebar --- */}
         <FileExplorer
-          files={files}
           selectedFile={selectedFile}
           onSelectFile={setSelectedFile}
         //onUpdateFiles={setFiles}

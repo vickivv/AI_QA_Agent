@@ -1,8 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { FolderItem, TreeItem } from '../components/RenderTrees';
 
-
-
 type State = {
   expandedByPath: Record<string, boolean>;
   searchHits: string[];

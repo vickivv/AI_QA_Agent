@@ -1,9 +1,12 @@
+"use client"
 import React from 'react';
+import { useState } from 'react';
 import { FolderOpen, FolderClosed, FileCode } from 'lucide-react';
-// import { Provider } from "react-redux";
-// import store from "../store"
+import { deleteFile, renameFile } from "./fileReducer"
+import { deleteFolder, renameFolder } from "./folderReducer"
 
 const join = (base: string, name: string) => (base ? `${base}/${name}` : name);
+
 export interface FileItem {
     _id: string;
     name: string;
@@ -30,6 +33,10 @@ interface FileTreeProps {
     // expandedFolders: { [key: string]: boolean };
     onSelectFile: (path: string) => void;
     toggleFolder: (path: string) => void;
+    onDeleteFile: (fileId: string) => void;
+    onRenameFile: (fileId: string, newName: string) => void;
+    onDeleteFolder: (folderId: string) => void;
+    onRenameFolder: (folderId: string, newName: string) => void;
 }
 
 // --- Component Implementation ---
@@ -39,9 +46,21 @@ const FileTree: React.FC<FileTreeProps> = ({
     expandedByPath,
     searchHits,
     onSelectFile,
-    toggleFolder
+    toggleFolder,
+    onDeleteFile,
+    onRenameFile,
+    onDeleteFolder,
+    onRenameFolder
 }) => {
     const isSearchActive = searchHits.length > 0; // Check if search is active
+    const [contextMenu, setContextMenu] = useState<{
+        visible: boolean;
+        x: number;
+        y: number;
+        itemPath: string;
+        itemType: 'file' | 'folder';
+        itemId: string;
+    } | null>(null);
 
     const renderTree = (currentItems: TreeItem[], depth = 0, basePath = "") => {
         // We use map to process the current items
@@ -84,8 +103,27 @@ const FileTree: React.FC<FileTreeProps> = ({
                             <div
                                 className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100 ${isHit ? 'bg-yellow-50 font-semibold' : ''}`}
                                 style={{ paddingLeft: `${depth * 12 + 12}px` }}
-                                // CRITICAL FIX: Use the full path for the Redux action
-                                onClick={() => toggleFolder(itemPath)}
+                                // Use the full path for the Redux action
+                                onClick={() => {
+                                    toggleFolder(itemPath)
+                                    setContextMenu(null); //After single click, close the context menu.
+                                }}
+                                onDoubleClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                }}
+                                onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setContextMenu({
+                                        visible: true,
+                                        x: e.clientX,
+                                        y: e.clientY,
+                                        itemPath: itemPath,
+                                        itemType: 'folder',
+                                        itemId: item._id
+                                    });
+                                }}
                             >
                                 {expandedByPath[itemPath] ? (
                                     <FolderOpen className="w-4 h-4 text-blue-500" />
@@ -105,7 +143,28 @@ const FileTree: React.FC<FileTreeProps> = ({
                         <div
                             className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-sm ${selectedFile === itemPath ? "bg-blue-50 border-l-2 border-blue-500" : ""} ${isHit ? 'bg-yellow-50 font-semibold' : ''}`}
                             style={{ paddingLeft: `${depth * 12 + 12}px` }}
-                            onClick={() => onSelectFile(itemPath)}
+                            onClick={() => {
+                                onSelectFile(itemPath)
+                                setContextMenu(null);
+                            }}
+                            onDoubleClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+
+                            }}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                console.log('Right-click detected on:', item.name, 'ID:', item._id);
+                                setContextMenu({
+                                    visible: true,
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    itemPath: itemPath,
+                                    itemType: 'file',
+                                    itemId: item._id
+                                });
+                                console.log('Context menu state set');
+                            }}
                         >
                             <FileCode className="w-4 h-4 text-gray-500" />
                             <span className="text-gray-700">{item.name}</span>
@@ -120,6 +179,58 @@ const FileTree: React.FC<FileTreeProps> = ({
     return (
         <div className="file-tree-container">
             {renderTree(items, 0, "")}
+
+            {/* Context Menu */}
+            {contextMenu && contextMenu.visible && (
+
+                <div
+                    className="fixed bg-white border border-gray-300 rounded shadow-lg z-50"
+                    style={{
+                        left: `${contextMenu.x}px`,
+                        top: `${contextMenu.y}px`
+                    }}
+                >
+                    <div
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                        onClick={() => {
+                            // Handle rename
+                            const newName = prompt('Enter new name:', contextMenu.itemPath.split('/').pop());
+                            if (newName) {
+                                if (contextMenu.itemType === 'file') {
+                                    onRenameFile(contextMenu.itemId, newName);
+                                } else {
+                                    onRenameFolder(contextMenu.itemId, newName);
+                                }
+                            }
+                            setContextMenu(null);
+                        }}
+                    >
+                        Rename
+                    </div>
+                    <div
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-red-600"
+                        onClick={() => {
+                            console.log('Delete clicked, itemId:', contextMenu.itemId, 'itemType:', contextMenu.itemType);
+                            console.log('onDeleteFile function:', typeof onDeleteFile);
+                            console.log('onDeleteFolder function:', typeof onDeleteFolder);
+                            if (confirm(`Delete ${contextMenu.itemPath}?`)) {
+                                if (contextMenu.itemType === 'file') {
+                                    console.log('About to call onDeleteFile with:', contextMenu.itemId);
+                                    onDeleteFile(contextMenu.itemId);
+                                    console.log('onDeleteFile called');
+                                } else {
+                                    console.log('About to call onDeleteFolder with:', contextMenu.itemId);
+                                    onDeleteFolder(contextMenu.itemId);
+                                    console.log('onDeleteFolder called');
+                                }
+                            }
+                            setContextMenu(null);
+                        }}
+                    >
+                        Delete
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

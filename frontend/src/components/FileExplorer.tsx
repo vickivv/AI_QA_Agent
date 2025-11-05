@@ -2,28 +2,61 @@
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { addFile, deleteFile, renameFile } from "./fileReducer"
-import { addNewFolder, deleteFolder, updateFolderName } from "./folderReducer"
+import { addNewFolder, deleteFolder, renameFolder } from "./folderReducer"
 import { FileCode, FolderOpen, FolderClosed, Plus } from "lucide-react";
 import FileTree from "./RenderTrees"
-import { TreeItem } from "./RenderTrees"
+import { TreeItem, FileItem, FolderItem } from "./RenderTrees"
 import { RootState } from "../store/index";
 import { toggleFolder } from "../store/explorerSlice";
 
 export interface FileExplorerProps {
-  files: TreeItem[];
   selectedFile: string;
   onSelectFile: (name: string) => void;
   //onUpdateFiles: (files: FileItem[]) => void;
 }
 
 const FileExplorer: React.FC<FileExplorerProps> = ({
-  files,
   selectedFile,
   onSelectFile,
   //onUpdateFiles,
 }) => {
   const dispatch = useDispatch();
+  // Get flat arrays from Redux
+  const reduxFiles = useSelector((state: RootState) => state.fileReducer.files);
+  const reduxFolders = useSelector((state: RootState) => state.folderReducer.folders);
+
   const { expandedByPath, searchHits } = useSelector((state: RootState) => state.explorer);
+
+  // Build tree structure from flat arrays
+  const buildTree = (): TreeItem[] => {
+    // Convert folders to TreeItems with children
+    const folderMap = new Map<string, FolderItem>();
+    // First, create all folder nodes
+    reduxFolders.forEach(folder => {
+      folderMap.set(folder._id, {
+        _id: folder._id,
+        name: folder.name,
+        type: 'folder',
+        children: []
+      });
+    });
+    // Add files to their parent folders
+    reduxFiles.forEach(file => {
+      const fileItem: FileItem = {
+        _id: file._id,
+        name: file.name,
+        type: 'file',
+        folderId: file.folderId
+      };
+
+      if (file.folderId && folderMap.has(file.folderId)) {
+        folderMap.get(file.folderId)!.children!.push(fileItem);
+      }
+    });
+    // Return root level folders (you might need to adjust this based on your structure)
+    return Array.from(folderMap.values());
+  };
+  const files = buildTree();
 
   //// You no longer need to define toggleFolder here, as that logic should be in Redux now
   // and dispatched from the FileTree component. However, since your existing code
@@ -46,6 +79,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const handleAddNewFile = () => {
     const name = prompt("Enter new file name (e.g., script.py):");
     if (!name) return;
+
     dispatch(addFile({ name: name, content: '', _id: null }));
   };
 
@@ -124,6 +158,10 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           searchHits={searchHits}
           onSelectFile={onSelectFile}
           toggleFolder={(path: string) => dispatch(toggleFolder(path))}
+          onDeleteFile={(fileId: string) => dispatch(deleteFile({ fileId }))}
+          onRenameFile={(fileId: string, newName: string) => dispatch(renameFile({ fileId, newName }))}
+          onDeleteFolder={(folderId: string) => dispatch(deleteFolder({ folderId }))}
+          onRenameFolder={(folderId: string, newName: string) => dispatch(renameFolder({ folderId, newName }))}
         />
         {/* <FileTree
           items={files}

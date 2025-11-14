@@ -50,32 +50,17 @@ const FileTree: React.FC<FileTreeProps> = ({
       const isExpanded = expandedByPath[node.path];
       const isHit = searchHits.includes(node.path);
 
-      // search filter
-      let visible = true;
-      if (isSearchActive) {
-        if (isFile) {
-          visible = isHit;
-        } else {
-          // folder visible if itself is hit or has hit children
-          const hasHitChild = searchHits.some((h) =>
-            h.startsWith(node.path + "/")
-          );
-          visible = isHit || hasHitChild;
-        }
-      }
-
-      if (!visible) return null;
-
       return (
         <div key={node.path}>
           {/* Folder */}
           {isFolder && (
             <>
               <div
-                className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100 ${
-                  isHit ? "bg-yellow-50 font-semibold" : ""
-                }`}
+                className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100
+                    ${isHit ? "bg-yellow-50 font-semibold" : ""}
+                `}
                 style={{ paddingLeft: depth * 14 }}
+
                 onClick={() => {
                   toggleFolder(node.path);
                   onSelectFolder(node.path);
@@ -109,12 +94,12 @@ const FileTree: React.FC<FileTreeProps> = ({
           {/* File */}
           {isFile && (
             <div
-              className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100 ${
-                selectedFile === node.path
-                  ? "bg-blue-50 border-l-2 border-blue-500"
-                  : ""
-              } ${isHit ? "bg-yellow-50 font-semibold" : ""}`}
-              style={{ paddingLeft: depth * 14 }}
+                className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100
+                    ${selectedFile === node.path ? "bg-blue-50 border-l-2 border-blue-500" : ""}
+                    ${isHit ? "bg-yellow-50 font-semibold" : ""}
+                `}
+                style={{ paddingLeft: depth * 14 }}
+
               onClick={() => {
                 onSelectFile(node.path);
                 setContextMenu(null);

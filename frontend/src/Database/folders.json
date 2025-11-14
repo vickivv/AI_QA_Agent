@@ -1,0 +1,18 @@
+[ 
+    { "_id": "folder1", 
+    "name": "src",
+    "files" : [
+        { "_id":"file1", "folder": "folder1",  "name": "main.py"},
+        { "_id":"file2", "folder": "folder1",  "name": "helloWorld.py"}
+        ]
+    },
+    { "_id": "folder2", 
+    "name": "tests",
+    "files" : [
+        { "_id":"file3", "folder": "folder2",  "name": "test_main.py"},
+        { "_id":"file4", "folder": "folder2",  "name": "test_helloWorld.py"}
+        ]
+    },
+    { "_id": "folder3", "name": ".idea" },
+    { "_id": "folder4", "name": "out" }
+]

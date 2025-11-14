@@ -1,68 +1,91 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { FolderItem, TreeItem } from '../components/RenderTrees';
+import type { TreeItem, FolderNode } from "../components/RenderTreesTypes";
 
-type State = {
+// State
+interface ExplorerState {
   expandedByPath: Record<string, boolean>;
   searchHits: string[];
-};
+  selectedFolder: string; // "" means root
+}
 
-const initialState: State = {
+const initialState: ExplorerState = {
   expandedByPath: {},
   searchHits: [],
+  selectedFolder: "",
 };
 
-const join = (base: string, name: string) => (base ? `${base}/${name}` : name);
+// Helpers
+const join = (base: string, name: string) =>
+  base ? `${base}/${name}` : name;
 
+// Iterating over the tree recursively to find matches
 const findMatches = (items: TreeItem[], q: string): string[] => {
   const hits: string[] = [];
   const needle = q.trim().toLowerCase();
   if (!needle) return hits;
+
   const walk = (nodes: TreeItem[], base = "") => {
-    for (const n of nodes) {
-      const path = join(base, n.name);
-      if (n.name.toLowerCase().includes(needle)) hits.push(path);
-      if (n.type === "folder" && (n as FolderItem).children) {
-                walk((n as FolderItem).children!, path);
-            }
+    for (const node of nodes) {
+      const path = join(base, node.name);
+
+      // name match → hit
+      if (node.name.toLowerCase().includes(needle)) hits.push(path);
+
+      if (node.type === "folder" && node.children) {
+        walk(node.children, path);
+      }
     }
   };
+
   walk(items);
   return hits;
 };
-const expandAncestors = (paths: string[], prev: Record<string, boolean>) => {
+
+// Unfold all parent folders based on hits
+const expandAncestors = (
+  paths: string[],
+  prev: Record<string, boolean>
+): Record<string, boolean> => {
   const next = { ...prev };
+
   for (const p of paths) {
     const parts = p.split("/");
     for (let i = 0; i < parts.length - 1; i++) {
-      const folderPath = parts.slice(0, i + 1).join("/");
-      next[folderPath] = true;
+      const ancestor = parts.slice(0, i + 1).join("/");
+      next[ancestor] = true;
     }
   }
+
   return next;
 };
 
-// Thunk: performs search using current files tree passed in
+// Thunk: Search + auto-expand
 export const searchAndExpand = createAsyncThunk<
   { hits: string[]; expandedByPath: Record<string, boolean> },
   { files: TreeItem[]; query: string },
-  { state: { explorer: State } }
+  { state: { explorer: ExplorerState } }
 >("explorer/searchAndExpand", async ({ files, query }, { getState }) => {
   const hits = findMatches(files, query);
-  const expandedByPath = expandAncestors(hits, getState().explorer.expandedByPath);
+  const expandedByPath = expandAncestors(
+    hits,
+    getState().explorer.expandedByPath
+  );
   return { hits, expandedByPath };
 });
 
+// Slice
 const explorerSlice = createSlice({
   name: "explorer",
   initialState,
   reducers: {
-    setExpandedByPath(state, action: PayloadAction<Record<string, boolean>>) {
-      state.expandedByPath = action.payload;
+    toggleFolder(state, action: PayloadAction<string>) {
+      const p = action.payload;
+      state.expandedByPath[p] = !state.expandedByPath[p];
+      state.selectedFolder = p;
     },
-  
-    toggleFolder(state, action: PayloadAction<string>) {   
-      const folderPath = action.payload;
-      state.expandedByPath[folderPath] = !state.expandedByPath[folderPath];
+
+    setSelectedFolder(state, action: PayloadAction<string>) {
+      state.selectedFolder = action.payload;
     },
 
     setSearchHits(state, action: PayloadAction<string[]>) {
@@ -73,6 +96,7 @@ const explorerSlice = createSlice({
       state.searchHits = [];
     },
   },
+
   extraReducers: (builder) => {
     builder.addCase(searchAndExpand.fulfilled, (state, action) => {
       state.searchHits = action.payload.hits;
@@ -81,7 +105,11 @@ const explorerSlice = createSlice({
   },
 });
 
-export const { setExpandedByPath, toggleFolder, setSearchHits, clearSearch } =
-  explorerSlice.actions;
+export const {
+  toggleFolder,
+  setSelectedFolder,
+  setSearchHits,
+  clearSearch,
+} = explorerSlice.actions;
 
 export default explorerSlice.reducer;

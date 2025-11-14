@@ -1,177 +1,114 @@
 "use client";
-import React, { useState } from "react";
+
+import React from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { addFile, deleteFile, renameFile } from "./fileReducer"
-import { addNewFolder, deleteFolder, renameFolder } from "./folderReducer"
-import { FileCode, FolderOpen, FolderClosed, Plus } from "lucide-react";
-import FileTree from "./RenderTrees"
-import { TreeItem, FileItem, FolderItem } from "./RenderTrees"
-import { RootState } from "../store/index";
-import { toggleFolder } from "../store/explorerSlice";
+import { RootState } from "../store";
 
-export interface FileExplorerProps {
-  selectedFile: string;
-  onSelectFile: (name: string) => void;
-  //onUpdateFiles: (files: FileItem[]) => void;
-}
+import { addFile, deleteFile, renameFile } from "./fileReducer";
+import { addNewFolder, deleteFolder, renameFolder } from "./folderReducer";
+import { toggleFolder, setSelectedFolder } from "../store/explorerSlice";
 
-const FileExplorer: React.FC<FileExplorerProps> = ({
+import buildTree from "../utils/buildTree";
+import FileTree from "./RenderTrees";
+import { FilePlus, FolderPlus } from "lucide-react";
+import { updateFilePathsAfterFolderRename } from "./fileReducer";
+
+export default function FileExplorer({
   selectedFile,
   onSelectFile,
-  //onUpdateFiles,
-}) => {
+  onCreateFile,
+  onFolderRename,
+}: {
+  selectedFile: string;
+  onSelectFile: (path: string) => void;
+  onCreateFile: (path: string) => void;
+  onFolderRename: (oldPath: string, newPath: string) => void; 
+}) {
   const dispatch = useDispatch();
-  // Get flat arrays from Redux
-  const reduxFiles = useSelector((state: RootState) => state.fileReducer.files);
-  const reduxFolders = useSelector((state: RootState) => state.folderReducer.folders);
 
-  const { expandedByPath, searchHits } = useSelector((state: RootState) => state.explorer);
+  const files = useSelector((s: RootState) => s.fileReducer.files);
+  const folders = useSelector((s: RootState) => s.folderReducer.folders);
+  const { expandedByPath, searchHits, selectedFolder } = useSelector(
+    (s: RootState) => s.explorer
+  );
 
-  // Build tree structure from flat arrays
-  const buildTree = (): TreeItem[] => {
-    // Convert folders to TreeItems with children
-    const folderMap = new Map<string, FolderItem>();
-    // First, create all folder nodes
-    reduxFolders.forEach(folder => {
-      folderMap.set(folder._id, {
-        _id: folder._id,
-        name: folder.name,
-        type: 'folder',
-        children: []
-      });
-    });
-    // Add files to their parent folders
-    reduxFiles.forEach(file => {
-      const fileItem: FileItem = {
-        _id: file._id,
-        name: file.name,
-        type: 'file',
-        folderId: file.folderId
-      };
+  const tree = buildTree(files, folders);
 
-      if (file.folderId && folderMap.has(file.folderId)) {
-        folderMap.get(file.folderId)!.children!.push(fileItem);
-      }
-    });
-    // Return root level folders (you might need to adjust this based on your structure)
-    return Array.from(folderMap.values());
-  };
-  const files = buildTree();
-
-  //// You no longer need to define toggleFolder here, as that logic should be in Redux now
-  // and dispatched from the FileTree component. However, since your existing code
-  // seems to rely on local state, I'll update it to use the Redux dispatch.
-  // The toggle logic should ideally dispatch an action from the FileTree component itself
-  // to update the Redux state (expandedByPath).
-  // const toggleFolder = (folderName: string) => {
-  //   setExpandedFolders((prev) => ({
-  //     ...prev,
-  //     [folderName]: !prev[folderName],
-  //   }));
-  // };
-
-
-  // const addNewFile = () => {
-  //   const name = prompt("Enter new file name (e.g., script.py):");
-  //   if (!name) return;
-  //   onUpdateFiles([...files, { name, type: "file" }]);
-  // };
-  const handleAddNewFile = () => {
-    const name = prompt("Enter new file name (e.g., script.py):");
+  // Add File 
+  const handleAddFile = () => {
+    const name = prompt("File name:");
     if (!name) return;
 
-    dispatch(addFile({ name: name, content: '', _id: null }));
+    const base = selectedFolder; // "" means root
+    const fullPath = base ? `${base}/${name}` : name;
+
+    dispatch(addFile({ path: fullPath }));
+    onCreateFile(fullPath);
+    onSelectFile(fullPath);
   };
 
-  // const addNewFolder = () => {
-  //   const name = prompt("Enter new folder name:");
-  //   if (!name) return;
-  //   onUpdateFiles([...files, { name, type: "folder", children: [] }]);
-  // };
-  const handleAddNewFolder = () => {
-    const name = prompt("Enter new folder name:");
+  // Add Folder 
+  const handleAddFolder = () => {
+    const name = prompt("Folder name:");
     if (!name) return;
-    dispatch(addNewFolder({ name: name }));
+
+    const base = selectedFolder; // "" = workspace root
+    const fullPath = base ? `${base}/${name}` : name;
+
+    dispatch(addNewFolder({ path: fullPath }));
+    dispatch(toggleFolder(fullPath));
+    dispatch(setSelectedFolder(fullPath));
   };
-
-
-  // const renderTree = (items: FileItem[], depth = 0) =>
-  //   items.map((item, i) => (
-  //     <div key={i}>
-  //       {item.type === "folder" ? (
-  //         <>
-  //           <div
-  //           className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-sm"
-  //           style={{ paddingLeft: `${depth * 12 + 12}px` }}
-  //           onClick={() => toggleFolder(item.name)}
-  //         >
-  //           {expandedFolders[item.name] ? (
-  //             <FolderOpen className="w-4 h-4 text-blue-500" />
-  //           ) : (
-  //             <FolderClosed className="w-4 h-4 text-blue-500" />
-  //           )}
-  //           <span className="text-gray-700">{item.name}</span>
-  //         </div>
-  //         {expandedFolders[item.name] && item.children && renderTree(item.children, depth + 1)}
-  //       </>
-  //     ) : (
-  //       <div
-  //         className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-sm ${selectedFile === item.name ? "bg-blue-50 border-l-2 border-blue-500" : ""
-  //           }`}
-  //         style={{ paddingLeft: `${depth * 12 + 12}px` }}
-  //         onClick={() => onSelectFile(item.name)}
-  //       >
-  //         <FileCode className="w-4 h-4 text-gray-500" />
-  //         <span className="text-gray-700">{item.name}</span>
-  //       </div>
-  //     )}
-  //   </div>
-  // ));
 
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Explorer</h3>
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Explorer
+        </h3>
+
         <div className="flex gap-1">
-          <button
-            title="Add file"
-            onClick={handleAddNewFile}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <Plus className="w-4 h-4 text-gray-600" />
+          <button onClick={handleAddFile} className="p-1 hover:bg-gray-100 rounded">
+            <FilePlus className="w-4 h-4 text-gray-600" />
           </button>
-          <button
-            title="Add folder"
-            onClick={handleAddNewFolder}
-            className="p-1 hover:bg-gray-100 rounded"
-          >
-            <FolderClosed className="w-4 h-4 text-gray-600" />
+
+          <button onClick={handleAddFolder} className="p-1 hover:bg-gray-100 rounded">
+            <FolderPlus className="w-4 h-4 text-gray-600" />
           </button>
         </div>
       </div>
-      {/*<div className="flex-1 overflow-y-auto">{renderTree(files)}</div>*/}
+
+      {/* Workspace Root */}
+      <div
+        className={`px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100 ${
+          selectedFolder === "" ? "bg-blue-50 font-semibold" : ""
+        }`}
+        onClick={() => dispatch(setSelectedFolder(""))}
+      >
+        Workspace
+      </div>
+
+      {/* Tree */}
       <div className="flex-1 overflow-y-auto">
         <FileTree
-          items={files} // Redux state
+          items={tree}
           selectedFile={selectedFile}
-          expandedByPath={expandedByPath}  // Pass search hits for filtering/highlighting    
+          expandedByPath={expandedByPath}
           searchHits={searchHits}
           onSelectFile={onSelectFile}
-          toggleFolder={(path: string) => dispatch(toggleFolder(path))}
-          onDeleteFile={(fileId: string) => dispatch(deleteFile({ fileId }))}
-          onRenameFile={(fileId: string, newName: string) => dispatch(renameFile({ fileId, newName }))}
-          onDeleteFolder={(folderId: string) => dispatch(deleteFolder({ folderId }))}
-          onRenameFolder={(folderId: string, newName: string) => dispatch(renameFolder({ folderId, newName }))}
+          toggleFolder={(p) => dispatch(toggleFolder(p))}
+          onDeleteFile={(p) => dispatch(deleteFile({ path: p }))}
+          onRenameFile={(o, n) => dispatch(renameFile({ oldPath: o, newPath: n }))}
+          onDeleteFolder={(p) => dispatch(deleteFolder({ path: p }))}
+          onRenameFolder={(o, n) => {
+            dispatch(renameFolder({ oldPath: o, newPath: n }));
+            dispatch(updateFilePathsAfterFolderRename({ oldPath: o, newPath: n }));
+            onFolderRename(o, n);   // ⭐ 让 IDE 同步内容
+          }}
+          onSelectFolder={(p) => dispatch(setSelectedFolder(p))}
         />
-        {/* <FileTree
-          items={files}
-          expandedFolders={expandedFolders}
-          selectedFile={selectedFile}
-          toggleFolder={toggleFolder}
-          onSelectFile={onSelectFile} /> */}
       </div>
     </div>
   );
-};
-
-export default FileExplorer;
+}

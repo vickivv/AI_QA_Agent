@@ -1,87 +1,60 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { v4 as uuidv4 } from "uuid";
-import { addFile, deleteFile } from "./fileReducer";
 
-// --- 1. INTERFACE DEFINITIONS ---
-
-interface FileReference {
-  _id: string;
-  name: string;
-  folder: string;
+export interface FolderRecord {
+  path: string; // "src/utils"
+  name: string; // "utils"
+  type: "folder";
 }
 
-interface Folder {
-  _id: string;
-  name: string;
-  files: FileReference[];
+interface FolderState {
+  folders: FolderRecord[];
 }
 
-interface FoldersState {
-  folders: Folder[];
-}
-
-// --- 2. INITIAL STATE ---
-
-// The 'folders' variable imported from "../Database" must be compatible with Folder[]
-const initialState: FoldersState = {
- folders: [
-    { _id: "folder1", name: "src", files: [] },
-    { _id: "folder2", name: "tests", files: [] }
+const initialState: FolderState = {
+  folders: [
+    { path: "src", name: "src", type: "folder" },
+    { path: "tests", name: "tests", type: "folder" },
   ],
 };
 
-// --- 3. PAYLOAD INTERFACES (Action Input Types) ---
+const slice = createSlice({
+  name: "folders",
+  initialState,
+  reducers: {
+    addNewFolder(state, action: PayloadAction<{ path: string }>) {
+      const path = action.payload.path;
+      const name = path.split("/").pop()!;
+      state.folders.push({ path, name, type: "folder" });
+    },
 
-interface AddNewFolderPayload {
-  name: string; // The only data needed to create a new folder
-}
+    deleteFolder(state, action: PayloadAction<{ path: string }>) {
+      state.folders = state.folders.filter((f) => f.path !== action.payload.path);
+    },
 
-interface DeleteFolderPayload {
-  folderId: string;
-}
+    renameFolder: (
+      state,
+      action: PayloadAction<{ oldPath: string; newPath: string }>
+    ) => {
+      const { oldPath, newPath } = action.payload;
 
-interface UpdateFolderNamePayload {
-  folderId: string;
-  newName: string;
-}
+      // Update the folder itself
+      const folder = state.folders.find(f => f.path === oldPath);
+      if (folder) {
+        folder.path = newPath;
+        folder.name = newPath.split("/").pop()!;
+      }
 
-// --- 4. FOLDERS SLICE ---
-
-const foldersSlice = createSlice({
-    name: "folders",
-    initialState,
-    reducers: {
-        // Reducer 1: Add New Folder
-        addNewFolder: (state, action: PayloadAction<AddNewFolderPayload>) => {
-            const { name } = action.payload;
-            const newFolder: Folder = {
-                _id: uuidv4(),
-                files: [],
-                name: name,
-            };
-            state.folders.push(newFolder);
-        },
-
-        // Reducer 2: Delete Folder
-        deleteFolder: (state, action: PayloadAction<DeleteFolderPayload>) => {
-            const { folderId } = action.payload; 
-            console.log('deleteFolder reducer called with folderId:', folderId);
-            console.log('Before delete, folders:', state.folders);
-            state.folders = state.folders.filter((f) => f._id !== folderId);
-            console.log('After delete, folders:', state.folders);
-        },
-        
-        // Reducer 3: Update Folder Name
-        renameFolder: (state, action: PayloadAction<UpdateFolderNamePayload>) => {
-            const { folderId, newName } = action.payload;
-            const folderToUpdate = state.folders.find(f => f._id === folderId);    
-            if (folderToUpdate) {
-                folderToUpdate.name = newName;
-            }
-        },
+      // Update all subfolders
+      state.folders.forEach(f => {
+        if (f.path.startsWith(oldPath + "/")) {
+          const updated = f.path.replace(oldPath + "/", newPath + "/");
+          f.path = updated;
+          f.name = updated.split("/").pop()!;
+        }
+      });
     }
+  },
 });
 
-export const { addNewFolder, deleteFolder, renameFolder } = foldersSlice.actions;
-
-export default foldersSlice.reducer;
+export const { addNewFolder, deleteFolder, renameFolder } = slice.actions;
+export default slice.reducer;

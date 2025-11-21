@@ -22,6 +22,7 @@ interface GenerateResp {
   filename_suggestion: string; // "test_main.py"
 }
 
+
 const AITestGenIDE: React.FC = () => {
    // current file（full path）
   const [selectedFile, setSelectedFile] = useState("src/main.py");
@@ -33,7 +34,23 @@ const AITestGenIDE: React.FC = () => {
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [consoleHeight, setConsoleHeight] = useState(160); // initial height of console
+  const isDragging = useRef(false);
   const [output, setOutput] = useState("");
+  const onMouseDown = () => {
+    isDragging.current = true;
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const newHeight = window.innerHeight - e.clientY;
+    if (newHeight >= 80) setConsoleHeight(newHeight);
+  };
+
+  const onMouseUp = () => {
+    isDragging.current = false;
+  };
+
 
   // monaco editor reference
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -303,7 +320,11 @@ sys.stderr = sys.stdout
 
   // Render the main component
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div
+    className="h-screen flex flex-col bg-white"
+    onMouseMove={onMouseMove}
+    onMouseUp={onMouseUp}
+  >
       {/* Top Bar */}
       <TopBar 
         onRunCode={handleRunCode} 
@@ -385,10 +406,23 @@ sys.stderr = sys.stdout
 
       {/* Output Console */}
       {output && (
-        <div className="border-t border-gray-200 bg-gray-50 text-sm px-4 py-3 overflow-auto h-32 font-mono whitespace-pre-wrap">
-          {output}
-        </div>
-      )}
+  <>
+    {/* drag bar */}
+    <div
+      onMouseDown={onMouseDown}
+      className="h-2 bg-gray-300 hover:bg-gray-400 cursor-row-resize"
+    ></div>
+
+    {/* console output */}
+    <div
+      className="border-t border-gray-200 bg-gray-50 text-sm px-4 py-3 overflow-auto font-mono whitespace-pre-wrap"
+      style={{ height: consoleHeight }}
+    >
+      {output}
+    </div>
+  </>
+  )}
+
     </div>
   );
 };

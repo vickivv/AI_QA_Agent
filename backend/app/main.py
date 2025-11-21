@@ -13,7 +13,7 @@ from app.services.agent import QATestAgent
 
 # ---- Config ----
 MODEL_API_BASE = os.getenv("MODEL_API_BASE", "http://localhost:11434")
-OLLAMA_MODEL   = os.getenv("OLLAMA_MODEL", "deepseek-coder:6.7b")
+OLLAMA_MODEL   = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
 agent = QATestAgent(base_url=MODEL_API_BASE, model=OLLAMA_MODEL)
 
@@ -89,8 +89,9 @@ def health():
         ok = False
     return {"status": "ok", "model": OLLAMA_MODEL, "model_api_base": MODEL_API_BASE, "ollama_available": ok}
 
-@app.post("/generate-tests", response_model=GenerateResp)
+@app.post("/generate-tests", response_model=dict) 
 def generate_tests(req: GenerateReq):
+    
     try:
         raw_tests = agent.generate_tests(req.code, requirements=req.requirements)
     except requests.RequestException as e:
@@ -98,21 +99,8 @@ def generate_tests(req: GenerateReq):
 
     test_code = _sanitize_generated_tests(raw_tests)
     _assert_compiles(test_code, req.filename or "generated_test.py")
-
-    # write code + tests together so imports aren’t needed
-    path = _tests_filename(req.code, req.filename)
-    combined = f"{req.code.rstrip()}\n\n{test_code}\n"
-    path.write_text(combined, encoding="utf-8")
-
-    result: dict = {"written_to": str(path)}
-    if req.run_pytest:
-        try:
-            proc = subprocess.run(["pytest", "-q", str(path)], capture_output=True, text=True, timeout=180)
-            result["pytest_returncode"] = proc.returncode
-            result["pytest_stdout"] = proc.stdout[-2000:]
-            result["pytest_stderr"] = proc.stderr[-2000:]
-        except subprocess.TimeoutExpired:
-            result["pytest_returncode"] = 124
-            result["pytest_stdout"] = ""
-            result["pytest_stderr"] = "pytest timed out"
-    return result
+    return {
+        "status": "success",
+        "generated_code": test_code,  # return the generated test code
+        "filename_suggestion": "test_main.py" # suggest a filename
+    }

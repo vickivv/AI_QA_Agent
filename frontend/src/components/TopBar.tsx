@@ -1,14 +1,16 @@
 "use client";
 import React from "react";
-import { Files, Play, Settings } from "lucide-react";
+import { Files, Play, Settings, ClipboardCheck } from "lucide-react"; // 引入 ClipboardCheck
 import SearchBar from "./SearchBar";
+
 
 interface TopBarProps {
   onRunCode: () => void;
+  onRunTests: () => void;
   isPyodideReady: boolean;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onRunCode, isPyodideReady }) => {
+const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isPyodideReady }) => {
   return (
     <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4">
       {/* Left Section */}
@@ -27,6 +29,16 @@ const TopBar: React.FC<TopBarProps> = ({ onRunCode, isPyodideReady }) => {
           >
             <Play className="w-4 h-4" /> Run
           </button>
+          
+          {/* Run Test button */}
+          <button
+            onClick={onRunTests}
+            disabled={!isPyodideReady}
+            className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <ClipboardCheck className="w-4 h-4" /> Run Tests
+          </button>
+
 
           <button className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5">
             <Settings className="w-4 h-4" /> Settings

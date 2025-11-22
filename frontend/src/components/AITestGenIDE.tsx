@@ -8,6 +8,10 @@ import { loadPyodide, PyodideInterface } from "pyodide";
 
 import FileExplorer from "./FileExplorer";
 import TopBar from "./TopBar";
+import { callGenerateTestAPI } from "../logic/api";
+import { applyGeneratedTest } from "../logic/testGenerator";
+import ConsolePanel from "./ConsolePanel";
+import { usePyRunner } from "../hooks/usePyRunner";
 
 interface GenerateReq {
   code: string;
@@ -51,31 +55,11 @@ const AITestGenIDE: React.FC = () => {
     isDragging.current = false;
   };
 
+  const { isReady, runPython, runPytest } = usePyRunner();
 
   // monaco editor reference
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-
-  // pyodide instance
-  const [pyodide, setPyodide] = useState<PyodideInterface | null>(null);
-
-  useEffect(() => {
-    const initPy = async () => {
-      const py = await loadPyodide({
-          indexURL: "/pyodide/", 
-      });
-      
-      await py.loadPackage([
-          "pytest", 
-          "iniconfig", 
-          "pluggy", 
-          "attrs", 
-          "six"   
-      ]);
-      
-      setPyodide(py);
-    };
-    initPy();
-  }, []);
+  
 
   // Editor mount
   const handleEditorDidMount: OnMount = (editor) => {
@@ -160,160 +144,53 @@ const AITestGenIDE: React.FC = () => {
 
   // Handle test generation
   const handleGenerateTest = async () => {
-    const codeToTest = getSelectedOrFullCode();
+  const codeToTest = getSelectedOrFullCode();
+  if (!codeToTest.trim()) {
+    setOutput("⚠️ No code to test.");
+    return;
+  }
 
-    if (!codeToTest.trim()) {
-      setOutput("⚠️ Please select some code or open a file with content.");
-      return;
-    }
+  setIsGenerating(true);
+  setOutput("🔄 Generating tests...");
 
-    setIsGenerating(true);
-    setOutput("🔄 Sending code to AI agent for test generation...");
+  try {
+    const resp = await callGenerateTestAPI(codeToTest, selectedFile);
 
-    try {
-      // Call backend API
-      const API_URL = "http://localhost:8000/generate-tests"; 
+    const { updatedContents, testFile } = applyGeneratedTest(
+      selectedFile,
+      resp.generated_code,
+      fileContents
+    );
 
-      const payload: GenerateReq = {
-        code: codeToTest,
-        filename: selectedFile.split("/").pop(), // file name only
-        requirements: "Cover edge cases and happy paths", // optional requirements
-        run_pytest: false, // whether to run pytest after generation
-      };
-
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Request failed");
-      }
-
-      const result: GenerateResp = await response.json();
-      const targetPath = `tests/${result.filename_suggestion}`;
-      const newTestCode = result.generated_code;
-
-      // update file contents with generated test code
-      setFileContents((prev) => ({
-        ...prev,
-        [targetPath]: newTestCode,
-      }));
-
-      // Switch to the new test file tab
-      setSelectedFile(targetPath); 
-
-      // Update output console
-      let logOutput = `✅ Tests generated successfully!\n`;
-      logOutput += `Test code has been written to the editor for file: ${targetPath}`;
-      
-      setOutput(logOutput);
-
-    } catch (error: any) {
-      console.error("Generation failed:", error);
-      setOutput(`❌ Error generating tests: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
+    setFileContents(updatedContents);
+    setSelectedFile(testFile);
+    setOutput(`✨ Test generated and saved to ${testFile}`);
+  } catch (err: any) {
+    setOutput("❌ " + err.message);
+  } finally {
+    setIsGenerating(false);
+  }
   };
 
   // Execute pytest within Pyodide and capture output
   const handleRunTests = async () => {
-    if (!pyodide) {
-      setOutput("⏳ Initializing Python runtime...");
-      return;
-    }
+  const src = fileContents["src/main.py"] ?? "";
+  const tests = fileContents["tests/test_main.py"] ?? "";
 
-    // write current files to Pyodide VFS
-    const srcCode = fileContents["src/main.py"] || "";
-    const testCode = fileContents["tests/test_main.py"] || "";
-    
-    if (!srcCode.trim()) {
-        setOutput("⚠️ Source code (src/main.py) is empty. Cannot run tests.");
-        return;
-    }
-    const fixedTestCode = `from main import *\n${testCode}`;
-    // Create tests directories if not exist
-    try {
-        pyodide.FS.mkdir("/tests");
-    } catch (e) {
-        // ignore if already exists
-    }
-
-    // write files to Pyodide FS
-    pyodide.FS.writeFile("main.py", srcCode);
-    pyodide.FS.writeFile("/tests/test_main.py", fixedTestCode);
-
-    // run pytest
-    try {
-      pyodide.runPython(`
-        import sys
-        from io import StringIO
-        import os
-
-        sys.path.append(os.getcwd())
-
-        # Capture output
-        sys.stdout = StringIO()
-        sys.stderr = sys.stdout
-
-        # Execute pytest
-        import pytest
-        os.chdir('/') 
-
-        pytest_args = ["/tests"] 
-
-        try:
-            pytest.main(pytest_args) 
-        except SystemExit:
-            pass 
-
-        # Get the captured output
-        print(f"--- Pytest Result ---\\n")
-      `);
-
-      // get output
-      const result = pyodide.runPython("sys.stdout.getvalue()");
-      setOutput(result || "✅ Tests executed successfully (no output)");
-
-    } catch (err: any) {
-      setOutput(`❌ Pytest Execution Error: ${err.message}`);
-    }
-  };
-
+  const output = await runPytest(src, tests);
+  setOutput(output);
+};
 
   // Handle running Python code
   const handleRunCode = async () => {
-    if (!pyodide) {
-      setOutput("⏳ Initializing Python runtime...");
-      return;
-    }
+    console.log("handleRunCode CALLED");
+    console.log("runPython = ", runPython);
+  const code = fileContents[selectedFile] ?? "";
+  const result = await runPython(code);
+  console.log("runPython RESULT =", result);
 
-    const code = fileContents[selectedFile] ?? "";
-    if (!code.trim()) {
-      setOutput("⚠️ No code to run.");
-      return;
-    }
-
-    try {
-      pyodide.runPython(`
-import sys
-from io import StringIO
-sys.stdout = StringIO()
-sys.stderr = sys.stdout
-      `);
-
-      await pyodide.runPythonAsync(code);
-      const result = pyodide.runPython("sys.stdout.getvalue()");
-      setOutput(result || "✅ Executed successfully (no output)");
-    } catch (err: any) {
-      setOutput(`❌ Error: ${err.message}`);
-    }
-  };
+  setOutput(result);
+};
 
 
   const openFiles = Object.keys(fileContents);
@@ -326,11 +203,12 @@ sys.stderr = sys.stdout
     onMouseUp={onMouseUp}
   >
       {/* Top Bar */}
-      <TopBar 
-        onRunCode={handleRunCode} 
+      <TopBar
+        onRunCode={handleRunCode}
         onRunTests={handleRunTests}
-        isPyodideReady={!!pyodide} 
+        isReady={isReady}
       />
+
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left File Explorer */}
@@ -405,24 +283,7 @@ sys.stderr = sys.stdout
       </div>
 
       {/* Output Console */}
-      {output && (
-  <>
-    {/* drag bar */}
-    <div
-      onMouseDown={onMouseDown}
-      className="h-2 bg-gray-300 hover:bg-gray-400 cursor-row-resize"
-    ></div>
-
-    {/* console output */}
-    <div
-      className="border-t border-gray-200 bg-gray-50 text-sm px-4 py-3 overflow-auto font-mono whitespace-pre-wrap"
-      style={{ height: consoleHeight }}
-    >
-      {output}
-    </div>
-  </>
-  )}
-
+    <ConsolePanel output={output} />
     </div>
   );
 };

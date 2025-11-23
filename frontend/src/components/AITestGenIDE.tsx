@@ -41,6 +41,8 @@ const AITestGenIDE: React.FC = () => {
   const [consoleHeight, setConsoleHeight] = useState(160); // initial height of console
   const isDragging = useRef(false);
   const [output, setOutput] = useState("");
+  const [coverage, setCoverage] = useState<number>(0);
+
   const onMouseDown = () => {
     isDragging.current = true;
   };
@@ -156,7 +158,7 @@ const AITestGenIDE: React.FC = () => {
   try {
     const resp = await callGenerateTestAPI(codeToTest, selectedFile);
 
-    const { updatedContents, testFile } = applyGeneratedTest(
+    const { updatedContents, testFile, coverage } = applyGeneratedTest(
       selectedFile,
       resp.generated_code,
       fileContents
@@ -164,13 +166,16 @@ const AITestGenIDE: React.FC = () => {
 
     setFileContents(updatedContents);
     setSelectedFile(testFile);
+    setCoverage(coverage.percent);
+
     setOutput(`✨ Test generated and saved to ${testFile}`);
   } catch (err: any) {
     setOutput("❌ " + err.message);
   } finally {
     setIsGenerating(false);
   }
-  };
+};
+
 
   // Execute pytest within Pyodide and capture output
   const handleRunTests = async () => {
@@ -207,7 +212,9 @@ const AITestGenIDE: React.FC = () => {
         onRunCode={handleRunCode}
         onRunTests={handleRunTests}
         isReady={isReady}
+        coverage={coverage}
       />
+
 
 
       <div className="flex-1 flex overflow-hidden">

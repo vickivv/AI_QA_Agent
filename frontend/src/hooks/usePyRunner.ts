@@ -80,24 +80,33 @@ sys.stderr = sys.stdout
 
     try {
       writeFileToFS("main.py", sourceCode);
-      writeFileToFS("tests/test_main.py", testCode);
+      writeFileToFS("tests/test_main.py", `from main import *\n${testCode}`);
 
       pyodide.runPython(`
-import sys
+import sys, os, shutil
 from io import StringIO
-import os
 
+# clear previous pytest cache
+shutil.rmtree('/.pytest_cache', ignore_errors=True)
+
+# reset stdout
 sys.stdout = StringIO()
 sys.stderr = sys.stdout
+
+# reload modules so old test code does not persist
+import sys
+mods_to_clear = [m for m in sys.modules if m.startswith("test_") or m == "main"]
+for m in mods_to_clear:
+    del sys.modules[m]
 
 import pytest
 os.chdir("/")  
 
 try:
-    pytest.main(["/tests"])
+    pytest.main(["/tests", "-q"])
 except SystemExit:
     pass
-      `);
+`)
 
       return pyodide.runPython("sys.stdout.getvalue()");
 

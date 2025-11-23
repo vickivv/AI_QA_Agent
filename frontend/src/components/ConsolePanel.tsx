@@ -1,6 +1,9 @@
 // src/components/ConsolePanel.tsx
+"use client";
+
 import React from "react";
 import { useResizablePanel } from "../hooks/useResizablePanel";
+import { colorizePytestOutput } from "../utils/colorizePytest";
 
 interface ConsolePanelProps {
   output: string;
@@ -11,6 +14,8 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({ output }) => {
     useResizablePanel(160);
 
   if (!output) return null;
+
+  const coloredOutput = colorizePytestOutput(output);
 
   return (
     <div
@@ -28,9 +33,8 @@ const ConsolePanel: React.FC<ConsolePanelProps> = ({ output }) => {
       <div
         className="text-sm px-4 py-3 overflow-auto font-mono whitespace-pre-wrap"
         style={{ height }}
-      >
-        {output}
-      </div>
+        dangerouslySetInnerHTML={{ __html: coloredOutput }}
+      />
     </div>
   );
 };

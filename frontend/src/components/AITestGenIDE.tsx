@@ -1,74 +1,48 @@
+// src/components/AITestGenIDE.tsx
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import { RefreshCw } from "lucide-react";
-import { loadPyodide, PyodideInterface } from "pyodide";
+import { useDispatch } from "react-redux";
 
 import FileExplorer from "./FileExplorer";
 import TopBar from "./TopBar";
-import { callGenerateTestAPI } from "../logic/api";
-import { applyGeneratedTest } from "../logic/testGenerator";
 import ConsolePanel from "./ConsolePanel";
 import { usePyRunner } from "../hooks/usePyRunner";
-
-interface GenerateReq {
-  code: string;
-  filename?: string;
-  requirements?: string;
-  run_pytest?: boolean;
-}
-
-interface GenerateResp {
-  status: string; 
-  generated_code: string; // test code string
-  filename_suggestion: string; // "test_main.py"
-}
-
+import { callGenerateTestAPI } from "../logic/api";
+import { applyGeneratedTest } from "../logic/testGenerator";
+import { addFile } from "./fileReducer";
 
 const AITestGenIDE: React.FC = () => {
-   // current file（full path）
+  const dispatch = useDispatch();
+
+  // currently selected file path
   const [selectedFile, setSelectedFile] = useState("src/main.py");
 
-  // file contents of opened files
+  // file contents in the IDE
   const [fileContents, setFileContents] = useState<Record<string, string>>({
     "src/main.py": "",
     "tests/test_main.py": "",
   });
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [consoleHeight, setConsoleHeight] = useState(160); // initial height of console
-  const isDragging = useRef(false);
   const [output, setOutput] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [coverage, setCoverage] = useState<number>(0);
 
-  const onMouseDown = () => {
-    isDragging.current = true;
-  };
+  // Monaco editor ref
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging.current) return;
-    const newHeight = window.innerHeight - e.clientY;
-    if (newHeight >= 80) setConsoleHeight(newHeight);
-  };
-
-  const onMouseUp = () => {
-    isDragging.current = false;
-  };
-
+  // Pyodide hook
   const { isReady, runPython, runPytest } = usePyRunner();
 
-  // monaco editor reference
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  
-
-  // Editor mount
+  // Monaco Editor mount handler
   const handleEditorDidMount: OnMount = (editor) => {
     editorRef.current = editor;
   };
 
-  // Editor content change
+  // Editor content change handler
   const handleEditorChange = (value?: string) => {
     setFileContents((prev) => ({
       ...prev,
@@ -76,38 +50,15 @@ const AITestGenIDE: React.FC = () => {
     }));
   };
 
-  // Handle file creation from Explorer
-  const handleCreateFile = (path: string) => {
-    setFileContents((prev) => {
-      if (prev[path] !== undefined) return prev; 
-      return {
-        ...prev,
-        [path]: "",
-      };
-    });
-  };
-
-  // Handle file selection from Explorer
-  const handleSelectFile = (path: string) => {
-    setSelectedFile(path);
-
-    // Create empty content if not exists
-    setFileContents((prev) => {
-      if (prev[path] !== undefined) return prev;
-      return {
-        ...prev,
-        [path]: "",
-      };
-    });
-  };
-
+  // Rename folder handler to sync IDE content
   const handleFolderRename = (oldPath: string, newPath: string) => {
-    setFileContents(prev => {
+    setFileContents((prev) => {
       const updated: Record<string, string> = {};
 
       for (const [path, content] of Object.entries(prev)) {
         if (path.startsWith(oldPath + "/")) {
-          updated[path.replace(oldPath, newPath)] = content;
+          const newFilePath = path.replace(oldPath + "/", newPath + "/");
+          updated[newFilePath] = content;
         } else {
           updated[path] = content;
         }
@@ -116,18 +67,58 @@ const AITestGenIDE: React.FC = () => {
       return updated;
     });
 
+    // if the selected file is in the renamed folder, update its path
     if (selectedFile.startsWith(oldPath + "/")) {
-      setSelectedFile(selectedFile.replace(oldPath, newPath));
+      setSelectedFile(selectedFile.replace(oldPath + "/", newPath + "/"));
     }
   };
 
+  // Create File & auto-create test file
+  const handleCreateFile = (path: string) => {
+    // update Redux file tree
+    dispatch(addFile({ path }));
 
-  // Show Generate Test button only for Python files
-  const showGenerateTest =
-    selectedFile.endsWith(".py");
+    // initialize IDE content
+    setFileContents((prev) => {
+      if (prev[path] !== undefined) return prev;
+      return { ...prev, [path]: "" };
+    });
 
-  
-  // Get selected text or full code
+    // auto-create corresponding test file if in src/
+    if (path.startsWith("src/") && path.endsWith(".py")) {
+      const fileName = path.split("/").pop();
+      if (fileName) {
+        const testPath = `tests/test_${fileName}`;
+
+        // add to Redux file tree
+        dispatch(addFile({ path: testPath }));
+
+        setFileContents((prev) => {
+          if (prev[testPath] !== undefined) return prev;
+          return { ...prev, [testPath]: "" };
+        });
+      }
+    }
+
+    // update selected file
+    setSelectedFile(path);
+  };
+
+  // Select File
+  const handleSelectFile = (path: string) => {
+    setSelectedFile(path);
+
+    // Initialize content if not exists
+    setFileContents((prev) => {
+      if (prev[path] !== undefined) return prev;
+      return { ...prev, [path]: "" };
+    });
+  };
+
+  // Only show "Generate Test" for .py files
+  const showGenerateTest = selectedFile.endsWith(".py");
+
+  // Select Code
   const getSelectedOrFullCode = (): string => {
     const editor = editorRef.current;
     if (!editor) return fileContents[selectedFile] || "";
@@ -136,78 +127,79 @@ const AITestGenIDE: React.FC = () => {
     const selection = editor.getSelection();
 
     if (model && selection && !selection.isEmpty()) {
-      // if there is a selection, get the selected text
+      // If there's a selection, use it
       return model.getValueInRange(selection);
     }
-    
-    // if no selection, return full code
-    return model?.getValue() || "";
+
+    // Otherwise, return full file content
+    return model?.getValue() ?? fileContents[selectedFile] ?? "";
   };
 
-  // Handle test generation
+  // Generate Test Handler
   const handleGenerateTest = async () => {
-  const codeToTest = getSelectedOrFullCode();
-  if (!codeToTest.trim()) {
-    setOutput("⚠️ No code to test.");
-    return;
-  }
+    const codeToTest = getSelectedOrFullCode();
+    if (!codeToTest.trim()) {
+      setOutput("⚠️ No code to test.");
+      return;
+    }
 
-  setIsGenerating(true);
-  setOutput("🔄 Generating tests...");
+    setIsGenerating(true);
+    setOutput("🔄 Generating tests...");
 
-  try {
-    const resp = await callGenerateTestAPI(codeToTest, selectedFile);
+    try {
+      // Call backend API to generate test code
+      const resp = await callGenerateTestAPI(codeToTest, selectedFile);
 
-    const { updatedContents, testFile, coverage } = applyGeneratedTest(
-      selectedFile,
-      resp.generated_code,
-      fileContents
-    );
+      // Apply generated test to IDE content & compute coverage
+      const {
+        updatedContents,
+        testFile,
+        coverage: cov,
+      } = applyGeneratedTest(selectedFile, resp.generated_code, fileContents);
 
-    setFileContents(updatedContents);
-    setSelectedFile(testFile);
-    setCoverage(coverage.percent);
+      setFileContents(updatedContents);
+      setSelectedFile(testFile);
 
-    setOutput(`✨ Test generated and saved to ${testFile}`);
-  } catch (err: any) {
-    setOutput("❌ " + err.message);
-  } finally {
-    setIsGenerating(false);
-  }
-};
+      if (cov) {
+        setCoverage(cov.percent ?? 0);
+      }
 
+      // Update Redux file tree
+      dispatch(addFile({ path: testFile }));
 
-  // Execute pytest within Pyodide and capture output
-  const handleRunTests = async () => {
-  const src = fileContents["src/main.py"] ?? "";
-  const tests = fileContents["tests/test_main.py"] ?? "";
+      setOutput(`✨ Test generated and saved to ${testFile}`);
+    } catch (err: any) {
+      setOutput("❌ " + (err?.message ?? "Error generating tests"));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-  const output = await runPytest(src, tests);
-  setOutput(output);
-};
-
-  // Handle running Python code
+  // Run Code Handler
   const handleRunCode = async () => {
-    console.log("handleRunCode CALLED");
-    console.log("runPython = ", runPython);
-  const code = fileContents[selectedFile] ?? "";
-  const result = await runPython(code);
-  console.log("runPython RESULT =", result);
+    const code = fileContents[selectedFile] ?? "";
+    const result = await runPython(selectedFile, fileContents[selectedFile]);
+    setOutput(result);
 
+  };
+
+  // Run Tests Handler
+  const handleRunTests = async () => {
+    console.log("All files:", Object.keys(fileContents));
+
+  const result = await runPytest(fileContents); 
   setOutput(result);
 };
 
 
+
+  // Open files for tabs
   const openFiles = Object.keys(fileContents);
 
-  // Render the main component
+  // ========== UI ==========
   return (
-    <div
-    className="h-screen flex flex-col bg-white"
-    onMouseMove={onMouseMove}
-    onMouseUp={onMouseUp}
-  >
-      {/* Top Bar */}
+    <div className="h-screen flex flex-col bg-white">
+      {/* Topbar */}
       <TopBar
         onRunCode={handleRunCode}
         onRunTests={handleRunTests}
@@ -215,17 +207,17 @@ const AITestGenIDE: React.FC = () => {
         coverage={coverage}
       />
 
-
-
+      {/* Middle: Left File Explorer + Right Editor */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left File Explorer */}
+        {/* Left File Explorer (Redux) */}
         <FileExplorer
           selectedFile={selectedFile}
           onSelectFile={handleSelectFile}
           onCreateFile={handleCreateFile}
-          onFolderRename={handleFolderRename} 
+          onFolderRename={handleFolderRename}
         />
-        {/* Right Editor Area */}
+
+        {/* Editor */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs */}
           <div className="h-9 bg-white border-b border-gray-200 flex items-center px-2 gap-1">
@@ -264,7 +256,7 @@ const AITestGenIDE: React.FC = () => {
               }}
             />
 
-            {/* Generate Test */}
+            {/* Generate Test button */}
             {showGenerateTest && (
               <div className="absolute top-4 right-4 z-10">
                 <button
@@ -278,9 +270,7 @@ const AITestGenIDE: React.FC = () => {
                       Generating...
                     </>
                   ) : (
-                    <>
-                      ✨ Generate Test
-                    </>
+                    <>✨ Generate Test</>
                   )}
                 </button>
               </div>
@@ -289,8 +279,8 @@ const AITestGenIDE: React.FC = () => {
         </div>
       </div>
 
-      {/* Output Console */}
-    <ConsolePanel output={output} />
+      {/* Console */}
+      <ConsolePanel output={output} />
     </div>
   );
 };

@@ -1,11 +1,18 @@
+// src/store/index.ts
 import { configureStore } from "@reduxjs/toolkit";
-import explorer from "./explorerSlice";
-import fileReducer from "../components/fileReducer"
-import folderReducer from "../components/folderReducer"
+
+import fileReducer from "../components/fileReducer";
+import folderReducer from "../components/folderReducer";
+import explorerReducer from "./explorerSlice";
 
 export const store = configureStore({
-  reducer: { explorer, fileReducer, folderReducer },
+  reducer: {
+    file: fileReducer,
+    folderReducer: folderReducer,
+    explorer: explorerReducer,
+  },
 });
-export default store;
+
+// Type helpers
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

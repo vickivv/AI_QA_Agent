@@ -24,6 +24,7 @@ const fileSlice = createSlice({
     addFile(state, action: PayloadAction<{ path: string }>) {
       const { path } = action.payload;
       const name = path.split("/").pop()!;
+      if (state.files.some(f => f.path === path)) return;
       state.files.push({ path, name, type: "file" });
     },
 

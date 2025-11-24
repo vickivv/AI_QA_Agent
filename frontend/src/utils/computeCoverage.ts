@@ -1,26 +1,31 @@
-export function computeFunctionCoverage(
-  sourceFunctions: string[],
-  testCode: string
+// utils/computeCoverage.ts
+
+export function computeGlobalCoverage(
+  allFunctions: string[],
+  allTestFiles: Record<string, string>
 ) {
   const tested = new Set<string>();
 
-  for (const fn of sourceFunctions) {
-    // look for function name followed by (
-    const pattern = new RegExp(`\\b${fn}\\s*\\(`);
-    if (pattern.test(testCode)) {
-      tested.add(fn);
+  // Check each test file for function calls
+  for (const [path, content] of Object.entries(allTestFiles)) {
+    if (!path.startsWith("tests/")) continue; // only test files
+
+    for (const fn of allFunctions) {
+      const pattern = new RegExp(`\\b${fn}\\s*\\(`);
+      if (pattern.test(content)) {
+        tested.add(fn);
+      }
     }
   }
 
-  const total = sourceFunctions.length;
   const covered = tested.size;
-  const percent = total === 0 ? 0 : Math.round((covered / total) * 100);
+  const total = allFunctions.length;
 
   return {
-    percent,
+    percent: total === 0 ? 0 : Math.round((covered / total) * 100),
     covered,
     total,
     testedFunctions: [...tested],
-    missingFunctions: sourceFunctions.filter((fn) => !tested.has(fn)),
+    missingFunctions: allFunctions.filter((f) => !tested.has(f)),
   };
 }

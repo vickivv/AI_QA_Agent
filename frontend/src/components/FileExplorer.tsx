@@ -26,13 +26,13 @@ export default function FileExplorer({
 }) {
   const dispatch = useDispatch();
 
-  const files = useSelector((s: RootState) => s.fileReducer.files);
-  const folders = useSelector((s: RootState) => s.folderReducer.folders);
+  const files = useSelector((s: RootState) => s.file.files);
+const folders = useSelector((s: RootState) => s.folderReducer.folders);
+  const tree = buildTree(files, folders);
+
   const { expandedByPath, searchHits, selectedFolder } = useSelector(
     (s: RootState) => s.explorer
   );
-
-  const tree = buildTree(files, folders);
 
   // Add File 
   const handleAddFile = () => {
@@ -104,7 +104,7 @@ export default function FileExplorer({
           onRenameFolder={(o, n) => {
             dispatch(renameFolder({ oldPath: o, newPath: n }));
             dispatch(updateFilePathsAfterFolderRename({ oldPath: o, newPath: n }));
-            onFolderRename(o, n);   // ⭐ 让 IDE 同步内容
+            onFolderRename(o, n);   
           }}
           onSelectFolder={(p) => dispatch(setSelectedFolder(p))}
         />

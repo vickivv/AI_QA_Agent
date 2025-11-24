@@ -35,27 +35,56 @@ class QATestAgent:
 
     def generate_tests(self, code: str, requirements: Optional[str] = None) -> str:
         prompt = (
-            "You are a QA code generation model. "
-            "You are a world-class Quality Assurance (QA) engineer specializing in Python."
-            "Your task is to generate comprehensive and high-quality Pytest test cases for the user-provided Python code."
+            "You are a world-class Python QA engineer. "
+            "Your task is to generate high-quality, deterministic Pytest test cases for the user-provided code. "
 
-            "Output Rules (Mandatory)"
+            # === FEW-SHOT EXAMPLE  ===
+            "Follow EXACTLY the following style and structure:\n"
+            "-----------------------\n"
+            "Example Format:\n"
+            "import pytest\n\n"
+            "class TestAdd:\n"
+            "    def test_add_positive_numbers(self):\n"
+            "        assert add(2, 3) == 5\n\n"
+            "    other test methods...\n"
+            "class TestMinus:\n"
+            "    def test_minus_positive_numbers(self):\n"
+            "        assert minus(5, 2) == 3\n"
+            "    other test methods...\n"
+            "-----------------------\n\n"
 
-            "Format: Output must be the complete, raw Python code for the test file. Do not include any surrounding markdown fences (like ```python)."
+            # === SCOPE RULES (CRITICAL) ===
+            "Scope Restriction (MANDATORY):\n"
+            "- You MUST generate tests ONLY for functions that appear in the user-provided code snippet.\n"
+            "- If the snippet contains only one function, generate tests ONLY for that function.\n"
+            "- DO NOT generate tests for functions not present in the snippet.\n"
+            "- DO NOT infer, guess, hallucinate, or assume additional functions.\n\n"
 
-            "No Explanations: Do not include any conversational text, explanations, or extraneous comments outside of standard Python code comments (#)."
+            # === OUTPUT RULES ===
+            "Output Rules (MANDATORY):\n"
+            "- Output MUST be complete Python test code only. NO markdown fences.\n"
+            "- NO explanations, NO natural language, NO comments except Python (#) comments.\n"
+            "- Tests MUST be grouped into classes. One class per function.\n"
+            "- Each class name must be descriptive (e.g., TestAdd).\n"
+            "- Each test method must start with test_.\n"
+            "- ABSOLUTELY DO NOT import the module under test (framework injects it).\n"
+            "- DO NOT generate any import for the functions being tested.\n"
+            "- Only import pytest if needed: `import pytest`.\n"
+            "- STRICTLY FORBIDDEN: @pytest.mark.parametrize OR ANY other pytest markers.\n"
+            "- Use simple assert statements only.\n"
+            "- Use deterministic numeric inputs: positive, negative, zero, mixed-sign.\n"
+            "- NEVER duplicate code; keep output clean and minimal.\n\n"
 
-            "Naming Convention: Test classes should be named descriptively (e.g., TestFunctionName). Test methods must start with test_."
+            # === GENERATION TARGET ===
+            "Generate tests for this code:\n"
+            "-----------------------\n"
+            f"{code}\n"
+            "-----------------------\n\n"
 
-            "No Imports (Crucial): ABSOLUTELY DO NOT include any import statements for the module being tested (e.g., from main import add). The function will be made available automatically by the testing framework."
-
-            "Standard Pytest Only: STRICTLY FORBIDDEN to use any custom or non-standard Pytest markers (e.g., @pytest.mark.happy_path, @pytest.mark.edge_cases). Only use standard markers like @pytest.mark.parametrize if necessary."
-
-            "Code Length: Ensure the generated code is complete and not truncated.\n"
-            
-            f"Code:\n{code}\n\n"
-            f"Requirements:\n{requirements or 'None'}"
+            f"Additional Requirements:\n{requirements or 'None'}\n"
         )
+
+
         
         # Payload modification to limit context and output length
         payload = {

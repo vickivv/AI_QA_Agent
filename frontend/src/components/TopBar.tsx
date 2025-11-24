@@ -3,14 +3,15 @@ import React from "react";
 import { Files, Play, Settings, ClipboardCheck } from "lucide-react"; 
 import SearchBar from "./SearchBar";
 
-
 interface TopBarProps {
   onRunCode: () => void;
   onRunTests: () => void;
   isReady: boolean;
+  coverage: number | null;   
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady }) => {
+
+const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverage }) => {
   return (
     <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4">
       {/* Left Section */}
@@ -48,7 +49,12 @@ const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady }) => {
       </div>
 
       {/* Right Section: Search */}
-      <div className="flex items-center">
+      <div className="flex items-center gap-4">
+        {coverage !== null && (
+          <div className="text-sm text-gray-700 font-medium px-3 py-1 bg-gray-100 rounded">
+            Test Coverage: <span className="text-blue-600">{coverage}%</span>
+          </div>
+        )}
         <SearchBar />
       </div>
     </div>

@@ -103,7 +103,7 @@ import pytest
 os.chdir("/")  
 
 try:
-    pytest.main(["/tests", "-q"])
+    pytest.main(["--rootdir=/", "/tests", "-v"])
 except SystemExit:
     pass
 `)

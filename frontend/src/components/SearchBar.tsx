@@ -8,12 +8,11 @@ import buildTree from "../utils/buildTree";
 export default function SearchBar() {
   const dispatch = useAppDispatch();
 
-  const files = useAppSelector((s) => s.fileReducer.files);
+  const files = useAppSelector((s) => s.file.files);
   const folders = useAppSelector((s) => s.folderReducer.folders);
+  const tree = buildTree(files, folders);
 
   const [q, setQ] = React.useState("");
-
-  const tree = buildTree(files, folders);
 
   const handleSearch = (value: string) => {
     dispatch(searchAndExpand({ files: tree, query: value }));
@@ -24,7 +23,6 @@ export default function SearchBar() {
       <div className="flex items-center border rounded px-2 py-1 bg-white">
         <Search className="w-4 h-4 text-gray-500 mr-2" />
 
-        {/* onChange search */}
         <input
           value={q}
           onChange={(e) => {

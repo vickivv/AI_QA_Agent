@@ -1,11 +1,15 @@
 import React from "react";
+import { Provider } from "react-redux";
+import { store } from "./store";
 import AITestGenIDE from "./components/AITestGenIDE";
 
 const App: React.FC = () => {
   return (
-    <div className="h-screen w-screen">
-      <AITestGenIDE />
-    </div>
+    <Provider store={store}>
+      <div className="h-screen w-screen">
+        <AITestGenIDE />
+      </div>
+    </Provider>
   );
 };
 

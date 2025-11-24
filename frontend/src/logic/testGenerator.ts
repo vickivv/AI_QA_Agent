@@ -1,34 +1,37 @@
-// src/logic/testGenerator.ts
 import { extractFunctionNames } from "../utils/extractFunctions";
-import { computeFunctionCoverage } from "../utils/computeCoverage";
+import { computeGlobalCoverage } from "../utils/computeCoverage";
 
 export function applyGeneratedTest(
-  selectedFile: string,
-  generatedCode: string,
+  sourcePath: string,
+  rawTest: string,
   fileContents: Record<string, string>
 ) {
-  // generate test file path and name
-  const fileName = selectedFile.split("/").pop() || "main.py";
-  const testFileName = "test_" + fileName;
+  const testFileName = "test_" + sourcePath.split("/").pop()!;
   const testFilePath = `tests/${testFileName}`;
 
-  // prepare updated file contents
+  const modulePath = sourcePath.replace(".py", "").replace(/\//g, ".");
+  const finalTestCode = `from ${modulePath} import *\n\n${rawTest}`;
+
   const updatedContents = {
     ...fileContents,
-    [testFilePath]: generatedCode,
+    [testFilePath]: finalTestCode,
   };
 
-  // get source code function names
-  const sourceCode = fileContents[selectedFile] || "";
-  const functionNames = extractFunctionNames(sourceCode);
+  // Compute GLOBAL coverage
+  let allFunctions: string[] = [];
 
-  // calculate coverage
-  const coverage = computeFunctionCoverage(functionNames, generatedCode);
+  for (const [path, content] of Object.entries(updatedContents)) {
+    if (path.startsWith("src/") && path.endsWith(".py")) {
+      const fns = extractFunctionNames(content);
+      allFunctions = [...allFunctions, ...fns];
+    }
+  }
+
+  const coverage = computeGlobalCoverage(allFunctions, updatedContents);
 
   return {
     updatedContents,
     testFile: testFilePath,
-    coverage, 
+    coverage, // { percent, covered, ... }
   };
 }
-

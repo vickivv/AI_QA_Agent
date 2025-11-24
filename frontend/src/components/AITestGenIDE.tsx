@@ -18,15 +18,20 @@ import { addFile } from "./fileReducer";
 const AITestGenIDE: React.FC = () => {
   const dispatch = useDispatch();
 
-  // currently selected file path
-  const [selectedFile, setSelectedFile] = useState("src/main.py");
-
-  // file contents in the IDE
+  // ====== Tabs & file contents ======
   const [fileContents, setFileContents] = useState<Record<string, string>>({
     "src/main.py": "",
     "tests/test_main.py": "",
   });
 
+  // tabs state
+  const [openTabs, setOpenTabs] = useState<string[]>([
+    "src/main.py",
+    "tests/test_main.py",
+  ]);
+  const [activeTab, setActiveTab] = useState<string>("src/main.py");
+
+  // console output & state
   const [output, setOutput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [coverage, setCoverage] = useState<number>(0);
@@ -37,24 +42,68 @@ const AITestGenIDE: React.FC = () => {
   // Pyodide hook
   const { isReady, runPython, runPytest } = usePyRunner();
 
-  // Monaco Editor mount handler
+  // ====== helpers ======
+
+  // ensure tab is open
+  const ensureTabOpen = (path: string) => {
+    setOpenTabs((prev) => {
+      if (prev.includes(path)) return prev;
+      return [...prev, path];
+    });
+  };
+
+  // open/select file tab
+  const openFile = (path: string) => {
+    setActiveTab(path);
+    ensureTabOpen(path);
+
+    setFileContents((prev) => {
+      if (prev[path] !== undefined) return prev;
+      return { ...prev, [path]: "" };
+    });
+  };
+
+  // close tab
+  const closeTab = (path: string) => {
+    setOpenTabs((prev) => {
+      if (!prev.includes(path)) return prev;
+
+      const idx = prev.indexOf(path);
+      const newTabs = prev.filter((p) => p !== path);
+
+      // if closing active tab, switch to another
+      if (path === activeTab) {
+        if (newTabs.length > 0) {
+          const next = newTabs[idx] || newTabs[idx - 1];
+          setActiveTab(next);
+        } else {
+          setActiveTab("");
+        }
+      }
+
+      return newTabs;
+    });
+  };
+
+  // ====== Monaco Editor mount ======
   const handleEditorDidMount: OnMount = (editor) => {
     editorRef.current = editor;
   };
 
-  // Editor content change handler
+  // ====== Editor ======
   const handleEditorChange = (value?: string) => {
+    if (!activeTab) return;
     setFileContents((prev) => ({
       ...prev,
-      [selectedFile]: value ?? "",
+      [activeTab]: value ?? "",
     }));
   };
 
-  // Rename folder handler to sync IDE content
+  // ====== Folder rename → update fileContents & tabs ======
   const handleFolderRename = (oldPath: string, newPath: string) => {
+    // update fileContents key
     setFileContents((prev) => {
       const updated: Record<string, string> = {};
-
       for (const [path, content] of Object.entries(prev)) {
         if (path.startsWith(oldPath + "/")) {
           const newFilePath = path.replace(oldPath + "/", newPath + "/");
@@ -63,34 +112,39 @@ const AITestGenIDE: React.FC = () => {
           updated[path] = content;
         }
       }
-
       return updated;
     });
 
-    // if the selected file is in the renamed folder, update its path
-    if (selectedFile.startsWith(oldPath + "/")) {
-      setSelectedFile(selectedFile.replace(oldPath + "/", newPath + "/"));
+    // update openTabs
+    setOpenTabs((prev) =>
+      prev.map((p) =>
+        p.startsWith(oldPath + "/") ? p.replace(oldPath + "/", newPath + "/") : p
+      )
+    );
+
+    // Update activeTab
+    if (activeTab.startsWith(oldPath + "/")) {
+      setActiveTab(activeTab.replace(oldPath + "/", newPath + "/"));
     }
   };
 
-  // Create File & auto-create test file
+  // ====== Create file from FileExplorer + auto-create test file ======
   const handleCreateFile = (path: string) => {
-    // update Redux file tree
+    // Redux: add to file tree
     dispatch(addFile({ path }));
 
-    // initialize IDE content
+    // IDE: initialize file content
     setFileContents((prev) => {
       if (prev[path] !== undefined) return prev;
       return { ...prev, [path]: "" };
     });
 
-    // auto-create corresponding test file if in src/
+    // If source file under src/, auto-create test file
     if (path.startsWith("src/") && path.endsWith(".py")) {
       const fileName = path.split("/").pop();
       if (fileName) {
         const testPath = `tests/test_${fileName}`;
 
-        // add to Redux file tree
         dispatch(addFile({ path: testPath }));
 
         setFileContents((prev) => {
@@ -100,43 +154,40 @@ const AITestGenIDE: React.FC = () => {
       }
     }
 
-    // update selected file
-    setSelectedFile(path);
+    openFile(path);
   };
 
-  // Select File
+  // ====== FileExplorer Selected file ======
   const handleSelectFile = (path: string) => {
-    setSelectedFile(path);
-
-    // Initialize content if not exists
-    setFileContents((prev) => {
-      if (prev[path] !== undefined) return prev;
-      return { ...prev, [path]: "" };
-    });
+    openFile(path);
   };
 
-  // Only show "Generate Test" for .py files
-  const showGenerateTest = selectedFile.endsWith(".py");
+  // ======  Generate Test only shows on .py file ======
+  const showGenerateTest = activeTab.endsWith(".py");
 
-  // Select Code
+  // ====== Get selected code ======
   const getSelectedOrFullCode = (): string => {
+    if (!activeTab) return "";
     const editor = editorRef.current;
-    if (!editor) return fileContents[selectedFile] || "";
+    if (!editor) return fileContents[activeTab] || "";
 
     const model = editor.getModel();
     const selection = editor.getSelection();
 
     if (model && selection && !selection.isEmpty()) {
-      // If there's a selection, use it
       return model.getValueInRange(selection);
     }
 
-    // Otherwise, return full file content
-    return model?.getValue() ?? fileContents[selectedFile] ?? "";
+    return model?.getValue() ?? fileContents[activeTab] ?? "";
   };
 
-  // Generate Test Handler
+  // ====== Generate Test ======
   const handleGenerateTest = async () => {
+    if (!activeTab) {
+      setOutput("⚠️ No active file to test.");
+      return;
+    }
+
     const codeToTest = getSelectedOrFullCode();
     if (!codeToTest.trim()) {
       setOutput("⚠️ No code to test.");
@@ -147,24 +198,24 @@ const AITestGenIDE: React.FC = () => {
     setOutput("🔄 Generating tests...");
 
     try {
-      // Call backend API to generate test code
-      const resp = await callGenerateTestAPI(codeToTest, selectedFile);
+      // call API
+      const resp = await callGenerateTestAPI(codeToTest, activeTab);
 
-      // Apply generated test to IDE content & compute coverage
+      // apply generated test
       const {
         updatedContents,
         testFile,
         coverage: cov,
-      } = applyGeneratedTest(selectedFile, resp.generated_code, fileContents);
+      } = applyGeneratedTest(activeTab, resp.generated_code, fileContents);
 
       setFileContents(updatedContents);
-      setSelectedFile(testFile);
+      openFile(testFile);
 
       if (cov) {
         setCoverage(cov.percent ?? 0);
       }
 
-      // Update Redux file tree
+      // Redux：ensure test file exists in file tree
       dispatch(addFile({ path: testFile }));
 
       setOutput(`✨ Test generated and saved to ${testFile}`);
@@ -175,26 +226,22 @@ const AITestGenIDE: React.FC = () => {
     }
   };
 
-  // Run Code Handler
+  // ====== Run Code ======
   const handleRunCode = async () => {
-    const code = fileContents[selectedFile] ?? "";
-    const result = await runPython(selectedFile, fileContents[selectedFile]);
+    if (!activeTab) {
+      setOutput("⚠️ No active file to run.");
+      return;
+    }
+    const code = fileContents[activeTab] ?? "";
+    const result = await runPython(activeTab, code);
     setOutput(result);
-
   };
 
-  // Run Tests Handler
+  // ====== Run Tests（tests/） ======
   const handleRunTests = async () => {
-    console.log("All files:", Object.keys(fileContents));
-
-  const result = await runPytest(fileContents); 
-  setOutput(result);
-};
-
-
-
-  // Open files for tabs
-  const openFiles = Object.keys(fileContents);
+    const result = await runPytest(fileContents);
+    setOutput(result);
+  };
 
   // ========== UI ==========
   return (
@@ -209,30 +256,42 @@ const AITestGenIDE: React.FC = () => {
 
       {/* Middle: Left File Explorer + Right Editor */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left File Explorer (Redux) */}
+        {/* Left：File Explorer */}
         <FileExplorer
-          selectedFile={selectedFile}
+          selectedFile={activeTab}
           onSelectFile={handleSelectFile}
           onCreateFile={handleCreateFile}
           onFolderRename={handleFolderRename}
         />
 
-        {/* Editor */}
+        {/* Right：Tabs + Editor */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs */}
           <div className="h-9 bg-white border-b border-gray-200 flex items-center px-2 gap-1">
-            {openFiles.map((file) => (
+            {openTabs.map((file) => (
               <div
                 key={file}
-                onClick={() => setSelectedFile(file)}
-                className={`px-4 py-1.5 text-sm rounded-t cursor-pointer ${
-                  selectedFile === file
+                className={`px-3 py-1.5 text-sm rounded-t cursor-pointer flex items-center ${
+                  activeTab === file
                     ? "bg-white border-t-2 border-blue-500 text-gray-800"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
+                onClick={() => setActiveTab(file)}
                 title={file}
               >
-                {file.split("/").pop()}
+                <span>{file.split("/").pop()}</span>
+                {/* Close button */}
+                {openTabs.length > 1 && (
+                  <button
+                    className="ml-2 text-gray-400 hover:text-red-500"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(file);
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -240,10 +299,10 @@ const AITestGenIDE: React.FC = () => {
           {/* Monaco Editor */}
           <div className="flex-1 relative">
             <Editor
-              key={selectedFile}
+              key={activeTab}
               height="100%"
               defaultLanguage="python"
-              value={fileContents[selectedFile] ?? ""}
+              value={activeTab ? fileContents[activeTab] ?? "" : ""}
               theme="vs"
               onMount={handleEditorDidMount}
               onChange={handleEditorChange}

@@ -59,36 +59,52 @@ export function usePyRunner() {
 
   // Run Python
   const runPython = async (selectedPath: string, code: string) => {
-    if (!pyodide) return "⏳ Pyodide not ready.";
+  if (!pyodide) return "⏳ Pyodide not ready.";
 
-    try {
-      selectedPath = normalizePath(selectedPath);
-
-      // Make sure /src/__init__.py exists
-      writeFileToFS("/src/__init__.py", "");
-
-      // Write the current file
-      writeFileToFS(selectedPath, code);
-
-      pyodide.runPython(`
-        import sys
-        from io import StringIO
-        sys.stdout = StringIO()
-        sys.stderr = sys.stdout
-        `);
-
-              await pyodide.runPythonAsync(`
-        import runpy
-        runpy.run_path("${selectedPath}")
-        `);
-
-      const out = pyodide.runPython("sys.stdout.getvalue()");
-      return out || "✅ No output";
-    } catch (err: any) {
-      const dbg = pyodide?.runPython("sys.stdout.getvalue()") || "";
-      return "❌ Error:\n" + dbg;
+  try {
+    // normalize to absolute path
+    if (!selectedPath.startsWith("/")) {
+      selectedPath = "/" + selectedPath;
     }
-  };
+
+    // write code to FS
+    writeFileToFS(selectedPath, code);
+
+    // Ensure /src and /src/__init__.py exist
+    pyodide.FS.mkdirTree("/src");
+    if (!pyodide.FS.analyzePath("/src/__init__.py").exists) {
+      pyodide.FS.writeFile("/src/__init__.py", "");
+    }
+
+    // make sure / is in sys.path
+    pyodide.runPython(`
+import sys
+if "/" not in sys.path:
+    sys.path.insert(0, "/")       # PYTHONPATH
+if "/src" not in sys.path:
+    sys.path.insert(0, "/src")    
+`);
+
+    // catch stdout and stderr
+    pyodide.runPython(`
+from io import StringIO
+import sys
+sys.stdout = StringIO()
+sys.stderr = sys.stdout
+    `);
+
+    // run the code
+    await pyodide.runPythonAsync(`
+import runpy
+runpy.run_path("${selectedPath}")
+`);
+
+    return pyodide.runPython("sys.stdout.getvalue()") || "✅ No output";
+  } catch (err: any) {
+    const dbg = pyodide.runPython("sys.stdout.getvalue()") || "";
+    return "❌ Error:\n" + dbg;
+  }
+};
 
   // Run Pytest (tests/)
   const runPytest = async (files: Record<string, string>) => {

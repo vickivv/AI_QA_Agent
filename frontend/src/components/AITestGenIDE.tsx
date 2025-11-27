@@ -1,11 +1,11 @@
 // src/components/AITestGenIDE.tsx
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import { RefreshCw } from "lucide-react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import FileExplorer from "./FileExplorer";
 import TopBar from "./TopBar";
@@ -14,6 +14,9 @@ import { usePyRunner } from "../hooks/usePyRunner";
 import { callGenerateTestAPI } from "../logic/api";
 import { applyGeneratedTest } from "../logic/testGenerator";
 import { addFile } from "./fileReducer";
+import { addNewFolder } from "./folderReducer";
+import { RootState } from "../store";
+
 
 const AITestGenIDE: React.FC = () => {
   const dispatch = useDispatch();
@@ -243,6 +246,40 @@ const AITestGenIDE: React.FC = () => {
     setOutput(result);
   };
 
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        const filePath = `uploaded/${file.name}`;
+
+        setFileContents((prev) => ({
+          ...prev,
+          [filePath]: content,
+        }));
+        dispatch(addFile({ path: filePath }));
+      };
+      reader.readAsText(file);
+    });
+
+    // Reset input so same file can be uploaded again
+    event.target.value = "";
+  };
+
+  const folders = useSelector((s: RootState) => s.folderReducer.folders);
+  useEffect(() => {
+    const folderExists = folders.some(folder => folder.path === "uploaded");
+
+    if (!folderExists) {
+      dispatch(addNewFolder({ path: "uploaded" }));
+    }
+  }, [dispatch, folders]);
+
   // ========== UI ==========
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -252,6 +289,7 @@ const AITestGenIDE: React.FC = () => {
         onRunTests={handleRunTests}
         isReady={isReady}
         coverage={coverage}
+        onFileUpload={handleFileUpload}
       />
 
       {/* Middle: Left File Explorer + Right Editor */}
@@ -271,11 +309,10 @@ const AITestGenIDE: React.FC = () => {
             {openTabs.map((file) => (
               <div
                 key={file}
-                className={`px-3 py-1.5 text-sm rounded-t cursor-pointer flex items-center ${
-                  activeTab === file
-                    ? "bg-white border-t-2 border-blue-500 text-gray-800"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
+                className={`px-3 py-1.5 text-sm rounded-t cursor-pointer flex items-center ${activeTab === file
+                  ? "bg-white border-t-2 border-blue-500 text-gray-800"
+                  : "text-gray-600 hover:bg-gray-100"
+                  }`}
                 onClick={() => setActiveTab(file)}
                 title={file}
               >

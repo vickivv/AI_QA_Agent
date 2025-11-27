@@ -20,7 +20,8 @@ import { RootState } from "../store";
 
 const AITestGenIDE: React.FC = () => {
   const dispatch = useDispatch();
-
+  const selectedFolder = useSelector((s: RootState) => s.explorer.selectedFolder);
+  const folders = useSelector((s: RootState) => s.folderReducer.folders);
   // ====== Tabs & file contents ======
   const [fileContents, setFileContents] = useState<Record<string, string>>({
     "src/main.py": "",
@@ -250,13 +251,29 @@ const AITestGenIDE: React.FC = () => {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+    console.log("🔍 selectedFolder:", selectedFolder);
+    console.log("🔍 selectedFolder type:", typeof selectedFolder);
+    console.log("🔍 selectedFolder length:", selectedFolder?.length);
 
+    const targetFolder = selectedFolder || "uploaded";
+    console.log("🔍 targetFolder:", targetFolder);
+
+
+    const folderExists = folders.some(folder => folder.path === targetFolder);
+    console.log("🔍 folderExists:", folderExists);
+
+    if (!folderExists) {
+      console.log("🔍 Creating folder:", targetFolder);
+      dispatch(addNewFolder({ path: targetFolder }));
+    }
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
 
       reader.onload = (e) => {
         const content = e.target?.result as string;
-        const filePath = `uploaded/${file.name}`;
+        const filePath = `${targetFolder}/${file.name}`;
+
+        console.log("🔍 Final filePath:", filePath);
 
         setFileContents((prev) => ({
           ...prev,
@@ -271,7 +288,7 @@ const AITestGenIDE: React.FC = () => {
     event.target.value = "";
   };
 
-  const folders = useSelector((s: RootState) => s.folderReducer.folders);
+
   useEffect(() => {
     const folderExists = folders.some(folder => folder.path === "uploaded");
 

@@ -9,6 +9,7 @@ interface TopBarProps {
   isReady: boolean;
   coverage: number | null;
   onFileUpload?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+
 }
 
 

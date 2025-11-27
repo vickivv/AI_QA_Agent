@@ -10,7 +10,7 @@ import FileExplorer from "./FileExplorer";
 import TopBar from "./TopBar";
 
 const AITestGenIDE: React.FC = () => {
-   // current file（full path）
+  // current file（full path）
   const [selectedFile, setSelectedFile] = useState("src/main.py");
 
   // file contents of opened files
@@ -135,12 +135,11 @@ const AITestGenIDE: React.FC = () => {
 
     try {
       pyodide.runPython(`
-import sys
-from io import StringIO
-sys.stdout = StringIO()
-sys.stderr = sys.stdout
+        import sys
+        from io import StringIO
+        sys.stdout = StringIO()
+        sys.stderr = sys.stdout
       `);
-
       await pyodide.runPythonAsync(code);
       const result = pyodide.runPython("sys.stdout.getvalue()");
       setOutput(result || "✅ Executed successfully (no output)");
@@ -163,7 +162,7 @@ sys.stderr = sys.stdout
           selectedFile={selectedFile}
           onSelectFile={handleSelectFile}
           onCreateFile={handleCreateFile}
-          onFolderRename={handleFolderRename} 
+          onFolderRename={handleFolderRename}
         />
 
         {/* Right Editor Area */}
@@ -174,11 +173,10 @@ sys.stderr = sys.stdout
               <div
                 key={file}
                 onClick={() => setSelectedFile(file)}
-                className={`px-4 py-1.5 text-sm rounded-t cursor-pointer ${
-                  selectedFile === file
+                className={`px-4 py-1.5 text-sm rounded-t cursor-pointer ${selectedFile === file
                     ? "bg-white border-t-2 border-blue-500 text-gray-800"
                     : "text-gray-600 hover:bg-gray-100"
-                }`}
+                  }`}
                 title={file}
               >
                 {file.split("/").pop()}

@@ -1,17 +1,19 @@
 "use client";
-import React from "react";
-import { Files, Play, Settings, ClipboardCheck } from "lucide-react"; 
+import React, { useRef } from "react";
+import { Files, Play, Settings, ClipboardCheck, Upload } from "lucide-react";
 import SearchBar from "./SearchBar";
 
 interface TopBarProps {
   onRunCode: () => void;
   onRunTests: () => void;
   isReady: boolean;
-  coverage: number | null;   
+  coverage: number | null;
+  onFileUpload?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 
-const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverage }) => {
+const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverage, onFileUpload }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null); //ref for file input
   return (
     <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4">
       {/* Left Section */}
@@ -33,7 +35,7 @@ const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverag
           >
             <Play className="w-4 h-4" /> Run
           </button>
-          
+
           <button
             onClick={onRunTests}
             disabled={!isReady}
@@ -41,6 +43,24 @@ const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverag
           >
             <ClipboardCheck className="w-4 h-4" /> Run Tests
           </button>
+
+          {onFileUpload && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".py"
+                onChange={onFileUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5"
+              >
+                <Upload className="w-4 h-4" /> Upload
+              </button>
+            </>
+          )}
 
           <button className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5">
             <Settings className="w-4 h-4" /> Settings

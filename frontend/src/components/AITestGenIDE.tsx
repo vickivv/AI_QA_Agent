@@ -16,12 +16,47 @@ import { applyGeneratedTest } from "../logic/testGenerator";
 import { addFile } from "./fileReducer";
 import { addNewFolder } from "./folderReducer";
 import { RootState } from "../store";
+import SettingsPanel, { AppSettings } from './SettingsPanel';
+
 
 
 const AITestGenIDE: React.FC = () => {
   const dispatch = useDispatch();
   const selectedFolder = useSelector((s: RootState) => s.explorer.selectedFolder);
   const folders = useSelector((s: RootState) => s.folderReducer.folders);
+
+
+  //====== Settings panel state ======
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // State to hold current settings
+  const [settings, setSettings] = useState<AppSettings>({
+    theme: 'Light',
+    fontFamily: 'Monospace',
+    fontSize: 14,
+  });
+  // Function to open the settings panel
+  const openSettings = () => {
+    console.log("Opening settings...");
+    setIsSettingsOpen(true);
+  };
+  // Function to close the settings panel
+  const closeSettings = () => setIsSettingsOpen(false);
+  // Handlers for changing settings
+  const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSettings(prev => ({ ...prev, theme: e.target.value as AppSettings['theme'] }));
+  };
+
+  const handleFontFamilyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSettings(prev => ({ ...prev, fontFamily: e.target.value }));
+  };
+
+  const handleFontSizeChange = (amount: number) => {
+    setSettings(prev => ({
+      ...prev,
+      fontSize: Math.min(30, Math.max(10, prev.fontSize + amount)),
+    }));
+  };
+
   // ====== Tabs & file contents ======
   const [fileContents, setFileContents] = useState<Record<string, string>>({
     "src/main.py": "",
@@ -290,12 +325,26 @@ const AITestGenIDE: React.FC = () => {
 
 
   useEffect(() => {
+    // 1️⃣ Ensure "uploaded" folder exists
     const folderExists = folders.some(folder => folder.path === "uploaded");
-
     if (!folderExists) {
       dispatch(addNewFolder({ path: "uploaded" }));
     }
-  }, [dispatch, folders]);
+    // 2️⃣ Apply live settings
+    // Update theme
+    if (settings.theme === 'Dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Update font size and font family for the editor container
+    const editorContainer = document.getElementById('editor-container'); // make sure your editor div has this id
+    if (editorContainer) {
+      editorContainer.style.fontSize = `${settings.fontSize}px`;
+      editorContainer.style.fontFamily = settings.fontFamily;
+    }
+  }, [dispatch, folders, settings]);
 
   // ========== UI ==========
   return (
@@ -307,6 +356,7 @@ const AITestGenIDE: React.FC = () => {
         isReady={isReady}
         coverage={coverage}
         onFileUpload={handleFileUpload}
+        onOpenSettings={openSettings}
       />
 
       {/* Middle: Left File Explorer + Right Editor */}
@@ -394,6 +444,15 @@ const AITestGenIDE: React.FC = () => {
 
       {/* Console */}
       <ConsolePanel output={output} />
+
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={closeSettings}
+        settings={settings}
+        onThemeChange={handleThemeChange}
+        onFontFamilyChange={handleFontFamilyChange}
+        onFontSizeChange={handleFontSizeChange}
+      />
     </div>
   );
 };

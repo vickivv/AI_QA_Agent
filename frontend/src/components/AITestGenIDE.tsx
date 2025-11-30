@@ -16,7 +16,7 @@ import { applyGeneratedTest } from "../logic/testGenerator";
 import { addFile } from "./fileReducer";
 import { addNewFolder } from "./folderReducer";
 import { RootState } from "../store";
-import SettingsPanel, { AppSettings } from './SettingsPanel';
+import EditorSettingPanel, { AppSettings } from './SettingsPanel';
 
 
 
@@ -337,13 +337,6 @@ const AITestGenIDE: React.FC = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
-
-    // Update font size and font family for the editor container
-    const editorContainer = document.getElementById('editor-container'); // make sure your editor div has this id
-    if (editorContainer) {
-      editorContainer.style.fontSize = `${settings.fontSize}px`;
-      editorContainer.style.fontFamily = settings.fontFamily;
-    }
   }, [dispatch, folders, settings]);
 
   // ========== UI ==========
@@ -407,13 +400,14 @@ const AITestGenIDE: React.FC = () => {
               height="100%"
               defaultLanguage="python"
               value={activeTab ? fileContents[activeTab] ?? "" : ""}
-              theme="vs"
+              theme={settings.theme === 'Dark' ? 'vs-dark' : 'vs'}
               onMount={handleEditorDidMount}
               onChange={handleEditorChange}
               options={{
                 minimap: { enabled: false },
                 automaticLayout: true,
-                fontSize: 14,
+                fontSize: settings.fontSize,
+                fontFamily: settings.fontFamily,
                 lineNumbers: "on",
                 padding: { top: 12, bottom: 12 },
               }}
@@ -445,7 +439,7 @@ const AITestGenIDE: React.FC = () => {
       {/* Console */}
       <ConsolePanel output={output} />
 
-      <SettingsPanel
+      <EditorSettingPanel
         isOpen={isSettingsOpen}
         onClose={closeSettings}
         settings={settings}

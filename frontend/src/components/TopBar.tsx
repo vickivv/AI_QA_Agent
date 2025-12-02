@@ -9,10 +9,11 @@ interface TopBarProps {
   isReady: boolean;
   coverage: number | null;
   onFileUpload?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenSettings: () => void;
 }
 
 
-const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverage, onFileUpload }) => {
+const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverage, onFileUpload, onOpenSettings }) => {
   const fileInputRef = useRef<HTMLInputElement>(null); //ref for file input
   return (
     <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4">
@@ -62,7 +63,12 @@ const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverag
             </>
           )}
 
-          <button className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5">
+          <button className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Settings button clicked');
+              onOpenSettings();
+            }}>
             <Settings className="w-4 h-4" /> Settings
           </button>
         </div>

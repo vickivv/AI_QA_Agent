@@ -18,6 +18,8 @@ interface FileTreeProps {
 
   onDeleteFolder: (path: string) => void;
   onRenameFolder: (oldPath: string, newPath: string) => void;
+  onDownloadFile: (path: string) => void;
+  onMoveFile: (oldPath: string, newFolder: string) => void;
 }
 
 const FileTree: React.FC<FileTreeProps> = ({
@@ -32,6 +34,8 @@ const FileTree: React.FC<FileTreeProps> = ({
   onRenameFile,
   onDeleteFolder,
   onRenameFolder,
+  onDownloadFile,
+  onMoveFile,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
@@ -60,6 +64,22 @@ const FileTree: React.FC<FileTreeProps> = ({
                     ${isHit ? "bg-yellow-50 font-semibold" : ""}
                 `}
                 style={{ paddingLeft: depth * 14 }}
+                
+                onDragOver={(e) => e.preventDefault()}
+
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const draggedPath = e.dataTransfer.getData("text/plain");
+
+                  console.log("📂 Dropped file:", draggedPath, "→ Folder:", node.path);
+
+                  // Prevent dropping onto itself
+                  if (draggedPath === node.path) return;
+
+                  onMoveFile(draggedPath, node.path);
+
+                  setContextMenu(null);
+                }}
 
                 onClick={() => {
                   toggleFolder(node.path);
@@ -94,6 +114,10 @@ const FileTree: React.FC<FileTreeProps> = ({
           {/* File */}
           {isFile && (
             <div
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", node.path);
+                }}
                 className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm hover:bg-gray-100
                     ${selectedFile === node.path ? "bg-blue-50 border-l-2 border-blue-500" : ""}
                     ${isHit ? "bg-yellow-50 font-semibold" : ""}
@@ -178,6 +202,15 @@ const FileTree: React.FC<FileTreeProps> = ({
             }}
           >
             Delete
+          </div>
+          <div
+            className="px-3 py-1 hover:bg-gray-100 cursor-pointer"
+            onClick={() => {
+              onDownloadFile(contextMenu.path);
+              setContextMenu(null);
+            }}
+          >
+            Download
           </div>
         </div>
       )}

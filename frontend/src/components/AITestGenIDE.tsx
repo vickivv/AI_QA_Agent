@@ -16,10 +16,46 @@ import { applyGeneratedTest } from "../logic/testGenerator";
 import { addFile } from "./fileReducer";
 import { addNewFolder } from "./folderReducer";
 import { RootState } from "../store";
+import EditorSettingPanel, { AppSettings } from './SettingsPanel';
+import { downloadFile } from "../utils/downloadFile";
 
 
 const AITestGenIDE: React.FC = () => {
   const dispatch = useDispatch();
+  const selectedFolder = useSelector((s: RootState) => s.explorer.selectedFolder);
+  const folders = useSelector((s: RootState) => s.folderReducer.folders);
+
+
+  //====== Settings panel state ======
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // State to hold current settings
+  const [settings, setSettings] = useState<AppSettings>({
+    theme: 'Light',
+    fontFamily: 'Monospace',
+    fontSize: 14,
+  });
+  // Function to open the settings panel
+  const openSettings = () => {
+    console.log("Opening settings...");
+    setIsSettingsOpen(true);
+  };
+  // Function to close the settings panel
+  const closeSettings = () => setIsSettingsOpen(false);
+  // Handlers for changing settings
+  const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSettings(prev => ({ ...prev, theme: e.target.value as AppSettings['theme'] }));
+  };
+
+  const handleFontFamilyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSettings(prev => ({ ...prev, fontFamily: e.target.value }));
+  };
+
+  const handleFontSizeChange = (amount: number) => {
+    setSettings(prev => ({
+      ...prev,
+      fontSize: Math.min(30, Math.max(10, prev.fontSize + amount)),
+    }));
+  };
 
   // ====== Tabs & file contents ======
   const [fileContents, setFileContents] = useState<Record<string, string>>({
@@ -165,6 +201,41 @@ const AITestGenIDE: React.FC = () => {
     openFile(path);
   };
 
+  // ====== Download File ======
+  const handleDownloadFile = (path: string) => {
+  const content = fileContents[path] ?? "";
+  downloadFile(path, content);
+};
+
+  // Drag-and-drop Move File
+  const handleMoveFile = (oldPath: string, newPath: string) => {
+  // 1. 更新 fileContents
+  setFileContents(prev => {
+    const updated: Record<string, string> = {};
+
+    for (const [path, content] of Object.entries(prev)) {
+      if (path === oldPath) {
+        updated[newPath] = content; // move content
+      } else {
+        updated[path] = content;
+      }
+    }
+
+        return updated;
+      });
+
+      // 2. 更新 openTabs
+      setOpenTabs(prev =>
+        prev.map(tab => (tab === oldPath ? newPath : tab))
+      );
+
+      // 3. 更新 activeTab
+      if (activeTab === oldPath) {
+        setActiveTab(newPath);
+      }
+    };
+
+
   // ======  Generate Test only shows on .py file ======
   const showGenerateTest = activeTab.endsWith(".py");
 
@@ -250,13 +321,29 @@ const AITestGenIDE: React.FC = () => {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+    console.log("🔍 selectedFolder:", selectedFolder);
+    console.log("🔍 selectedFolder type:", typeof selectedFolder);
+    console.log("🔍 selectedFolder length:", selectedFolder?.length);
 
+    const targetFolder = selectedFolder || "src"; 
+    console.log("🔍 targetFolder:", targetFolder);
+
+
+    const folderExists = folders.some(folder => folder.path === targetFolder);
+    console.log("🔍 folderExists:", folderExists);
+
+    if (!folderExists) {
+      console.log("🔍 Creating folder:", targetFolder);
+      dispatch(addNewFolder({ path: targetFolder }));
+    }
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
 
       reader.onload = (e) => {
         const content = e.target?.result as string;
-        const filePath = `uploaded/${file.name}`;
+        const filePath = `${targetFolder}/${file.name}`;
+
+        console.log("🔍 Final filePath:", filePath);
 
         setFileContents((prev) => ({
           ...prev,
@@ -271,14 +358,6 @@ const AITestGenIDE: React.FC = () => {
     event.target.value = "";
   };
 
-  const folders = useSelector((s: RootState) => s.folderReducer.folders);
-  useEffect(() => {
-    const folderExists = folders.some(folder => folder.path === "uploaded");
-
-    if (!folderExists) {
-      dispatch(addNewFolder({ path: "uploaded" }));
-    }
-  }, [dispatch, folders]);
 
   // ========== UI ==========
   return (
@@ -290,6 +369,7 @@ const AITestGenIDE: React.FC = () => {
         isReady={isReady}
         coverage={coverage}
         onFileUpload={handleFileUpload}
+        onOpenSettings={openSettings}
       />
 
       {/* Middle: Left File Explorer + Right Editor */}
@@ -300,6 +380,8 @@ const AITestGenIDE: React.FC = () => {
           onSelectFile={handleSelectFile}
           onCreateFile={handleCreateFile}
           onFolderRename={handleFolderRename}
+          onDownloadFile={handleDownloadFile} 
+          onMoveFile={handleMoveFile}
         />
 
         {/* Right：Tabs + Editor */}
@@ -340,13 +422,14 @@ const AITestGenIDE: React.FC = () => {
               height="100%"
               defaultLanguage="python"
               value={activeTab ? fileContents[activeTab] ?? "" : ""}
-              theme="vs"
+              theme={settings.theme === 'Dark' ? 'vs-dark' : 'vs'}
               onMount={handleEditorDidMount}
               onChange={handleEditorChange}
               options={{
                 minimap: { enabled: false },
                 automaticLayout: true,
-                fontSize: 14,
+                fontSize: settings.fontSize,
+                fontFamily: settings.fontFamily,
                 lineNumbers: "on",
                 padding: { top: 12, bottom: 12 },
               }}
@@ -377,6 +460,15 @@ const AITestGenIDE: React.FC = () => {
 
       {/* Console */}
       <ConsolePanel output={output} />
+
+      <EditorSettingPanel
+        isOpen={isSettingsOpen}
+        onClose={closeSettings}
+        settings={settings}
+        onThemeChange={handleThemeChange}
+        onFontFamilyChange={handleFontFamilyChange}
+        onFontSizeChange={handleFontSizeChange}
+      />
     </div>
   );
 };

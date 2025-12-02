@@ -65,20 +65,17 @@ const FileTree: React.FC<FileTreeProps> = ({
                 `}
                 style={{ paddingLeft: depth * 14 }}
                 
-                // ⭐ 让此 folder 能成为 drop 区域
                 onDragOver={(e) => e.preventDefault()}
 
-                // ⭐ 文件被丢到 folder 时触发
                 onDrop={(e) => {
                   e.preventDefault();
                   const draggedPath = e.dataTransfer.getData("text/plain");
 
                   console.log("📂 Dropped file:", draggedPath, "→ Folder:", node.path);
 
-                  // 阻止 folder 自己丢给自己
+                  // Prevent dropping onto itself
                   if (draggedPath === node.path) return;
 
-                  // 必须实现：FileTree props 加 onMoveFile
                   onMoveFile(draggedPath, node.path);
 
                   setContextMenu(null);

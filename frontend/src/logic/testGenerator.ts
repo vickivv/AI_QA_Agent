@@ -21,7 +21,7 @@ export function applyGeneratedTest(
   let allFunctions: string[] = [];
 
   for (const [path, content] of Object.entries(updatedContents)) {
-    if (path.startsWith("src/") && path.endsWith(".py")) {
+    if (!path.startsWith("tests/") && path.endsWith(".py")) {
       const fns = extractFunctionNames(content);
       allFunctions = [...allFunctions, ...fns];
     }

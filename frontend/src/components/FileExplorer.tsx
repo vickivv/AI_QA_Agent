@@ -4,30 +4,35 @@ import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
 
-import { addFile, deleteFile, renameFile } from "./fileReducer";
+import { addFile, deleteFile, renameFile, updateFilePathsAfterFolderRename } from "./fileReducer";
 import { addNewFolder, deleteFolder, renameFolder } from "./folderReducer";
 import { toggleFolder, setSelectedFolder } from "../store/explorerSlice";
 
 import buildTree from "../utils/buildTree";
 import FileTree from "./RenderTrees";
 import { FilePlus, FolderPlus } from "lucide-react";
-import { updateFilePathsAfterFolderRename } from "./fileReducer";
+
+interface FileExplorerProps {
+  selectedFile: string;
+  onSelectFile: (path: string) => void;
+  onCreateFile: (path: string) => void;
+  onFolderRename: (oldPath: string, newPath: string) => void;
+  onDownloadFile: (path: string) => void;
+  onMoveFile: (oldPath: string, newFolder: string) => void;
+}
 
 export default function FileExplorer({
   selectedFile,
   onSelectFile,
   onCreateFile,
   onFolderRename,
-}: {
-  selectedFile: string;
-  onSelectFile: (path: string) => void;
-  onCreateFile: (path: string) => void;
-  onFolderRename: (oldPath: string, newPath: string) => void; 
-}) {
+  onDownloadFile,
+  onMoveFile,
+}: FileExplorerProps) {
   const dispatch = useDispatch();
 
   const files = useSelector((s: RootState) => s.file.files);
-const folders = useSelector((s: RootState) => s.folderReducer.folders);
+  const folders = useSelector((s: RootState) => s.folderReducer.folders);
   const tree = buildTree(files, folders);
 
   const { expandedByPath, searchHits, selectedFolder } = useSelector(
@@ -59,6 +64,15 @@ const folders = useSelector((s: RootState) => s.folderReducer.folders);
     dispatch(toggleFolder(fullPath));
     dispatch(setSelectedFolder(fullPath));
   };
+
+  // Move File
+  const handleMoveFile = (oldPath: string, folderPath: string) => {
+  const fileName = oldPath.split("/").pop();
+  const newPath = `${folderPath}/${fileName}`;
+
+  dispatch(renameFile({ oldPath, newPath }));
+  onFolderRename(oldPath, newPath); // update openTabs + fileContents
+};
 
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
@@ -107,6 +121,8 @@ const folders = useSelector((s: RootState) => s.folderReducer.folders);
             onFolderRename(o, n);   
           }}
           onSelectFolder={(p) => dispatch(setSelectedFolder(p))}
+          onDownloadFile={onDownloadFile} 
+          onMoveFile={handleMoveFile}
         />
       </div>
     </div>

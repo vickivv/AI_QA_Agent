@@ -17,7 +17,7 @@ import { addFile } from "./fileReducer";
 import { addNewFolder } from "./folderReducer";
 import { RootState } from "../store";
 import EditorSettingPanel, { AppSettings } from './SettingsPanel';
-
+import { downloadFile } from "../utils/downloadFile";
 
 
 const AITestGenIDE: React.FC = () => {
@@ -201,6 +201,41 @@ const AITestGenIDE: React.FC = () => {
     openFile(path);
   };
 
+  // ====== Download File ======
+  const handleDownloadFile = (path: string) => {
+  const content = fileContents[path] ?? "";
+  downloadFile(path, content);
+};
+
+  // Drag-and-drop Move File
+  const handleMoveFile = (oldPath: string, newPath: string) => {
+  // 1. 更新 fileContents
+  setFileContents(prev => {
+    const updated: Record<string, string> = {};
+
+    for (const [path, content] of Object.entries(prev)) {
+      if (path === oldPath) {
+        updated[newPath] = content; // move content
+      } else {
+        updated[path] = content;
+      }
+    }
+
+        return updated;
+      });
+
+      // 2. 更新 openTabs
+      setOpenTabs(prev =>
+        prev.map(tab => (tab === oldPath ? newPath : tab))
+      );
+
+      // 3. 更新 activeTab
+      if (activeTab === oldPath) {
+        setActiveTab(newPath);
+      }
+    };
+
+
   // ======  Generate Test only shows on .py file ======
   const showGenerateTest = activeTab.endsWith(".py");
 
@@ -290,7 +325,7 @@ const AITestGenIDE: React.FC = () => {
     console.log("🔍 selectedFolder type:", typeof selectedFolder);
     console.log("🔍 selectedFolder length:", selectedFolder?.length);
 
-    const targetFolder = selectedFolder || "uploaded";
+    const targetFolder = selectedFolder || "src"; 
     console.log("🔍 targetFolder:", targetFolder);
 
 
@@ -324,21 +359,6 @@ const AITestGenIDE: React.FC = () => {
   };
 
 
-  useEffect(() => {
-    // 1️⃣ Ensure "uploaded" folder exists
-    const folderExists = folders.some(folder => folder.path === "uploaded");
-    if (!folderExists) {
-      dispatch(addNewFolder({ path: "uploaded" }));
-    }
-    // 2️⃣ Apply live settings
-    // Update theme
-    if (settings.theme === 'Dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [dispatch, folders, settings]);
-
   // ========== UI ==========
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -360,6 +380,8 @@ const AITestGenIDE: React.FC = () => {
           onSelectFile={handleSelectFile}
           onCreateFile={handleCreateFile}
           onFolderRename={handleFolderRename}
+          onDownloadFile={handleDownloadFile} 
+          onMoveFile={handleMoveFile}
         />
 
         {/* Right：Tabs + Editor */}

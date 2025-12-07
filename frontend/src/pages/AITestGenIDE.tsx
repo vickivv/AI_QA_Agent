@@ -24,7 +24,7 @@ const AITestGenIDE: React.FC = () => {
   const dispatch = useDispatch();
   const selectedFolder = useSelector((s: RootState) => s.explorer.selectedFolder);
   const folders = useSelector((s: RootState) => s.folderReducer.folders);
-
+  const existingFiles = useSelector((s: RootState) => s.file.files.map(f => f.path));
 
   //====== Settings panel state ======
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -412,31 +412,42 @@ const AITestGenIDE: React.FC = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs */}
           <div className="h-9 bg-white border-b border-gray-200 flex items-center px-2 gap-1">
-            {openTabs.map((file) => (
-              <div
-                key={file}
-                className={`px-3 py-1.5 text-sm rounded-t cursor-pointer flex items-center ${activeTab === file
-                  ? "bg-white border-t-2 border-blue-500 text-gray-800"
-                  : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                onClick={() => setActiveTab(file)}
-                title={file}
-              >
-                <span>{file.split("/").pop()}</span>
-                {/* Close button */}
-                {openTabs.length > 1 && (
-                  <button
-                    className="ml-2 text-gray-400 hover:text-red-500"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeTab(file);
-                    }}
+            {openTabs.map((file) => {
+                const isDeleted = !existingFiles.includes(file);
+
+                return (
+                  <div
+                    key={file}
+                    className={`
+                      px-3 py-1.5 text-sm rounded-t cursor-pointer flex items-center
+                      ${activeTab === file ? "bg-white border-t-2 border-blue-500" : ""}
+                      ${isDeleted ? "opacity-50 italic text-gray-400" : "text-gray-600 hover:bg-gray-100"}
+                    `}
+                    onClick={() => setActiveTab(file)}
+                    title={file}
                   >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
+                    <span>{file.split("/").pop()}</span>
+
+                    {/* deleted badge */}
+                    {isDeleted && (
+                      <span className="ml-2 text-[10px] text-red-400">deleted</span>
+                    )}
+
+                    {/* close btn */}
+                    {openTabs.length > 1 && (
+                      <button
+                        className="ml-2 text-gray-400 hover:text-red-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeTab(file);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
           </div>
 
           {/* Monaco Editor */}

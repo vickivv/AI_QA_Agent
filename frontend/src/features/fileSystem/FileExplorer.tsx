@@ -69,12 +69,16 @@ export default function FileExplorer({
 
   // Move File
   const handleMoveFile = (oldPath: string, folderPath: string) => {
-  const fileName = oldPath.split("/").pop();
-  const newPath = `${folderPath}/${fileName}`;
+    const fileName = oldPath.split("/").pop();
+    const newPath = `${folderPath}/${fileName}`;
 
-  dispatch(renameFile({ oldPath, newPath }));
-  onFolderRename(oldPath, newPath); // update openTabs + fileContents
-};
+    // update Redux tree
+    dispatch(renameFile({ oldPath, newPath }));
+
+    // IDE update tabs + content
+    onFileRename(oldPath, newPath);
+  };
+
 
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">

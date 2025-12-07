@@ -167,6 +167,29 @@ const AITestGenIDE: React.FC = () => {
     }
   };
 
+  // ====== Rename file ======
+  const handleFileRename = (oldPath: string, newPath: string) => {
+    // 1. Update fileContents
+    setFileContents(prev => {
+      const updated = { ...prev };
+      if (prev[oldPath] !== undefined) {
+        updated[newPath] = prev[oldPath];
+        delete updated[oldPath];
+      }
+      return updated;
+    });
+
+    // 2. Update openTabs
+    setOpenTabs(prev =>
+      prev.map(tab => (tab === oldPath ? newPath : tab))
+    );
+
+    // 3. Update activeTab
+    if (activeTab === oldPath) {
+      setActiveTab(newPath);
+    }
+  };
+
   // ====== Create file from FileExplorer + auto-create test file ======
   const handleCreateFile = (path: string) => {
     // Redux: add to file tree
@@ -209,7 +232,7 @@ const AITestGenIDE: React.FC = () => {
 
   // Drag-and-drop Move File
   const handleMoveFile = (oldPath: string, newPath: string) => {
-  // 1. 更新 fileContents
+  // update fileContents
   setFileContents(prev => {
     const updated: Record<string, string> = {};
 
@@ -224,12 +247,12 @@ const AITestGenIDE: React.FC = () => {
         return updated;
       });
 
-      // 2. 更新 openTabs
+      // update openTabs
       setOpenTabs(prev =>
         prev.map(tab => (tab === oldPath ? newPath : tab))
       );
 
-      // 3. 更新 activeTab
+      // update activeTab
       if (activeTab === oldPath) {
         setActiveTab(newPath);
       }
@@ -382,6 +405,7 @@ const AITestGenIDE: React.FC = () => {
           onFolderRename={handleFolderRename}
           onDownloadFile={handleDownloadFile} 
           onMoveFile={handleMoveFile}
+          onFileRename={handleFileRename}
         />
 
         {/* Right：Tabs + Editor */}

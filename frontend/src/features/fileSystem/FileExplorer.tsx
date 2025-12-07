@@ -19,6 +19,7 @@ interface FileExplorerProps {
   onFolderRename: (oldPath: string, newPath: string) => void;
   onDownloadFile: (path: string) => void;
   onMoveFile: (oldPath: string, newFolder: string) => void;
+  onFileRename: (oldPath: string, newPath: string) => void;
 }
 
 export default function FileExplorer({
@@ -28,6 +29,7 @@ export default function FileExplorer({
   onFolderRename,
   onDownloadFile,
   onMoveFile,
+  onFileRename
 }: FileExplorerProps) {
   const dispatch = useDispatch();
 
@@ -67,12 +69,16 @@ export default function FileExplorer({
 
   // Move File
   const handleMoveFile = (oldPath: string, folderPath: string) => {
-  const fileName = oldPath.split("/").pop();
-  const newPath = `${folderPath}/${fileName}`;
+    const fileName = oldPath.split("/").pop();
+    const newPath = `${folderPath}/${fileName}`;
 
-  dispatch(renameFile({ oldPath, newPath }));
-  onFolderRename(oldPath, newPath); // update openTabs + fileContents
-};
+    // update Redux tree
+    dispatch(renameFile({ oldPath, newPath }));
+
+    // IDE update tabs + content
+    onFileRename(oldPath, newPath);
+  };
+
 
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
@@ -113,7 +119,12 @@ export default function FileExplorer({
           onSelectFile={onSelectFile}
           toggleFolder={(p) => dispatch(toggleFolder(p))}
           onDeleteFile={(p) => dispatch(deleteFile({ path: p }))}
-          onRenameFile={(o, n) => dispatch(renameFile({ oldPath: o, newPath: n }))}
+          onRenameFile={(oldPath, newPath) => {
+            // update redux store
+            dispatch(renameFile({ oldPath, newPath }));
+            // IDE → update fileContents + tabs + activeTab
+            onFileRename(oldPath, newPath);
+          }}
           onDeleteFolder={(p) => dispatch(deleteFolder({ path: p }))}
           onRenameFolder={(o, n) => {
             dispatch(renameFolder({ oldPath: o, newPath: n }));

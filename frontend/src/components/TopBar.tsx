@@ -22,9 +22,6 @@ const TopBar: React.FC<TopBarProps> = ({ onRunCode, onRunTests, isReady, coverag
         <h1 className="text-lg font-semibold text-gray-800">AI TestGen</h1>
 
         <div className="flex gap-2">
-          <button className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1.5">
-            <Files className="w-4 h-4" /> Files
-          </button>
 
           <button
             onClick={() => {

@@ -1,5 +1,5 @@
-import { extractFunctionNames } from "../utils/extractFunctions";
-import { computeGlobalCoverage } from "../utils/computeCoverage";
+import { extractFunctionNames } from "./extractFunctions";
+import { computeGlobalCoverage } from "./computeCoverage";
 
 export function applyGeneratedTest(
   sourcePath: string,

@@ -1,7 +1,7 @@
 // utils/buildTree.ts
 import { FileRecord } from "../components/fileReducer";
 import { FolderRecord } from "../components/folderReducer";
-import { FileNode, FolderNode, TreeItem } from "../components/RenderTreesTypes";
+import { FileNode, FolderNode, TreeItem } from "../features/fileSystem/RenderTreesTypes";
 
 export default function buildTree(
   files: FileRecord[],

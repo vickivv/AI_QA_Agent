@@ -1,9 +1,9 @@
 "use client";
 import React from "react";
 import { Search } from "lucide-react";
-import { useAppDispatch, useAppSelector } from "../store/hook";
-import { searchAndExpand } from "../store/explorerSlice";
-import buildTree from "../utils/buildTree";
+import { useAppDispatch, useAppSelector } from "../features/fileSystem/hook";
+import { searchAndExpand } from "../features/fileSystem/explorerSlice";
+import buildTree from "../features/fileSystem/buildTree";
 
 export default function SearchBar() {
   const dispatch = useAppDispatch();

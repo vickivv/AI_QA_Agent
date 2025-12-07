@@ -2,13 +2,13 @@
 
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "../store";
+import { RootState } from "./index";
 
 import { addFile, deleteFile, renameFile, updateFilePathsAfterFolderRename } from "./fileReducer";
 import { addNewFolder, deleteFolder, renameFolder } from "./folderReducer";
-import { toggleFolder, setSelectedFolder } from "../store/explorerSlice";
+import { toggleFolder, setSelectedFolder } from "./explorerSlice";
 
-import buildTree from "../utils/buildTree";
+import buildTree from "./buildTree";
 import FileTree from "./RenderTrees";
 import { FilePlus, FolderPlus } from "lucide-react";
 

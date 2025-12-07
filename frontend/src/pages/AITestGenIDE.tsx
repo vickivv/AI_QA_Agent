@@ -7,17 +7,17 @@ import * as monaco from "monaco-editor";
 import { RefreshCw } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 
-import FileExplorer from "./FileExplorer";
-import TopBar from "./TopBar";
-import ConsolePanel from "./ConsolePanel";
-import { usePyRunner } from "../hooks/usePyRunner";
-import { callGenerateTestAPI } from "../logic/api";
-import { applyGeneratedTest } from "../logic/testGenerator";
-import { addFile } from "./fileReducer";
-import { addNewFolder } from "./folderReducer";
-import { RootState } from "../store";
-import EditorSettingPanel, { AppSettings } from './SettingsPanel';
-import { downloadFile } from "../utils/downloadFile";
+import FileExplorer from "../features/fileSystem/FileExplorer";
+import TopBar from "../components/TopBar";
+import ConsolePanel from "../features/console/ConsolePanel";
+import { usePyRunner } from "../features/pythonRunner/usePyRunner";
+import { callGenerateTestAPI } from "../features/testGeneration/api";
+import { applyGeneratedTest } from "../features/testGeneration/testGenerator";
+import { addFile } from "../features/fileSystem/fileReducer";
+import { addNewFolder } from "../features/fileSystem/folderReducer";
+import { RootState } from "../features/fileSystem/index";
+import EditorSettingPanel, { AppSettings } from '../components/SettingsPanel';
+import { downloadFile } from "../features/fileSystem/downloadFile";
 
 
 const AITestGenIDE: React.FC = () => {

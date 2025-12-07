@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
-import type { TreeItem, FolderNode } from "../components/RenderTreesTypes";
+import type { TreeItem, FolderNode } from "./RenderTreesTypes";
 
 // State
 interface ExplorerState {

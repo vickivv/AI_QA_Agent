@@ -1,8 +1,8 @@
 // src/store/index.ts
 import { configureStore } from "@reduxjs/toolkit";
 
-import fileReducer from "../components/fileReducer";
-import folderReducer from "../components/folderReducer";
+import fileReducer from "./fileReducer";
+import folderReducer from "./folderReducer";
 import explorerReducer from "./explorerSlice";
 
 export const store = configureStore({

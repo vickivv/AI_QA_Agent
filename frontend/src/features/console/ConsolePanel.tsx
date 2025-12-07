@@ -2,8 +2,8 @@
 "use client";
 
 import React from "react";
-import { useResizablePanel } from "../hooks/useResizablePanel";
-import { colorizePytestOutput } from "../utils/colorizePytest";
+import { useResizablePanel } from "./useResizablePanel";
+import { colorizePytestOutput } from "./colorizePytest";
 
 interface ConsolePanelProps {
   output: string;

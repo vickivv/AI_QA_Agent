@@ -1,7 +1,7 @@
 import React from "react";
 import { Provider } from "react-redux";
-import { store } from "./store";
-import AITestGenIDE from "./components/AITestGenIDE";
+import { store } from "./features/fileSystem/index";
+import AITestGenIDE from "./pages/AITestGenIDE";
 
 const App: React.FC = () => {
   return (
